@@ -1,0 +1,22 @@
+{
+  "name": "BitChord TV",
+  "short_name": "BitChord",
+  "description": "YouTube Music client tailored for TV and responsive web",
+  "start_url": "/bitchordweb/",
+  "scope": "/bitchordweb/",
+  "display": "standalone",
+  "background_color": "#0b0a10",
+  "theme_color": "#12101b",
+  "icons": [
+    {
+      "src": "/bitchordweb/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/bitchordweb/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

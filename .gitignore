@@ -1,57 +1,35 @@
-# Gradle
-.gradle/
-.vscode/
-/build/
-/app/build/
-/desktopApp/bin/
+# Dependencies
+node_modules
+node_modules/
+.pnp/
+.pnp.js
+
+# Build output
+dist/
 build/
-builds/
-bills/
-*.apk
-*.aab
-gradle-app.setting
-!gradle-wrapper.jar
-!gradle-wrapper.properties
 
-# Local configuration file (SDK path, etc.)
-local.properties
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Kotlin
-.kotlin/
-
-# Android Studio / IntelliJ
-.idea/
-*.iml
-*.ipr
-*.iws
-.navigation/
-captures/
-.externalNativeBuild/
-.cxx/
-*.hprof
-
-# Log/OS files
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 *.log
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 .DS_Store
 Thumbs.db
-
-# Release signing — never commit the key or its passwords
-keystore.properties
-*.jks
-*.keystore
-
-# Project scratch / debug artifacts / experimental
-.shots/
-.tmp_verify/
-.debug/
-TIZEN OS/
-originalsrcappmobile/
-md files/
-.agents/
-TV_*.md
-
-# AI agent configuration
-AGENTS.md
-
-/output/
-
