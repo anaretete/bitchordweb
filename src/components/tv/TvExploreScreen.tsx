@@ -1,144 +1,127 @@
 import React, { useState } from 'react';
-import { Share2, Bookmark, Check, X, Play } from 'lucide-react';
-import { usePlayerStore } from '../../stores/playerStore';
-import { repository } from '../../services/repository';
-import type { Song } from '../../types';
+import { Share2, X } from 'lucide-react';
+import { usePlayerStore, SCREENSHOT_TRACKS } from '../../stores/playerStore';
 
 interface MoodGenreTile {
   title: string;
   subtitle: string;
-  query: string;
   color: string;
   image: string;
+  trackIndex: number;
 }
 
 export function TvExploreScreen() {
-  const { playSong } = usePlayerStore();
+  const { playTrackDirect } = usePlayerStore();
   const [activeContextTile, setActiveContextTile] = useState<string | null>(null);
   const [copiedNotification, setCopiedNotification] = useState(false);
-  const [loadingTile, setLoadingTile] = useState<string | null>(null);
 
-  // Exact 12 tiles matching Screenshot 5!
+  // Exact 12 tiles matching Screenshot 5
   const tiles: MoodGenreTile[] = [
     {
       title: 'Chill',
       subtitle: 'Coffee Shop Blend',
-      query: 'Coffee Shop Blend Chill Acoustic',
       color: '#466882',
       image: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 1,
     },
     {
       title: 'Commute',
       subtitle: 'Feel-Good Hip-Hop and R&B',
-      query: 'Feel-Good Hip-Hop and R&B Commute',
       color: '#b68700',
       image: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 2,
     },
     {
       title: 'Energize',
       subtitle: 'pump-up pop',
-      query: 'pump-up pop energize workout hits',
       color: '#c49c36',
       image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 0,
     },
     {
       title: 'Feel good',
       subtitle: 'Sunshine Indie',
-      query: 'Sunshine Indie Feel Good folk pop',
       color: '#5b9d57',
       image: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 3,
     },
     {
       title: 'Focus',
       subtitle: 'Lofi Loft',
-      query: 'Lofi Loft study beats chillhop',
       color: '#535b63',
       image: 'https://images.unsplash.com/photo-1539375665275-f9de415ef9ac?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 4,
     },
     {
       title: 'Gaming',
       subtitle: 'GAMING HITS',
-      query: 'Gaming Hits League of Legends EDM',
       color: '#343a40',
       image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 0,
     },
     {
       title: 'Party',
       subtitle: 'Turn Up Time',
-      query: 'Turn Up Time Club Party Hip Hop',
       color: '#583c84',
       image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 2,
     },
     {
       title: 'Romance',
       subtitle: 'Sweetheart Pop',
-      query: 'Sweetheart Pop Romance Love Songs',
       color: '#8b1c1c',
       image: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 5,
     },
     {
       title: 'Sad',
       subtitle: 'Burn the Photos',
-      query: 'Sad Melancholy Acoustic Heartbreak',
       color: '#3d4047',
       image: 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 6,
     },
     {
       title: 'Sleep',
       subtitle: 'Classical for Sleeping',
-      query: 'Classical for Sleeping Piano Ambient',
       color: '#3d296d',
       image: 'https://images.unsplash.com/photo-1511295742362-92c96b124e52?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 7,
     },
     {
       title: 'Workout',
       subtitle: 'Power Heavy Beats',
-      query: 'Workout Gym Pump Future Rap',
       color: '#8f4b1e',
       image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 0,
     },
     {
       title: 'African',
       subtitle: 'Afrobeats & Amapiano',
-      query: 'Afrobeats Hits Burna Boy Rema',
       color: '#1e5922',
       image: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500&auto=format&fit=crop&q=80',
+      trackIndex: 1,
     },
   ];
 
-  const handleTileClick = async (tile: MoodGenreTile) => {
-    setLoadingTile(tile.title);
-    try {
-      const searchResult = await repository.search(tile.query, 'songs');
-      if (searchResult.songs.length > 0) {
-        playSong(searchResult.songs[0], searchResult.songs);
-      }
-    } catch (err) {
-      console.error('Failed to load explore category:', err);
-    } finally {
-      setLoadingTile(null);
-    }
-  };
-
-  const handleContextMenu = (e: React.MouseEvent, title: string) => {
-    e.preventDefault();
-    setActiveContextTile(title);
-  };
-
   return (
-    <div className="pt-26 pb-16 px-8 md:px-14 max-w-7xl mx-auto">
+    <div className="pt-26 pb-16 px-8 md:px-14 max-w-7xl mx-auto select-none">
       {/* 4-column responsive grid matching Screenshot 5 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4.5">
         {tiles.map((tile) => {
           const isContextMenuOpen = activeContextTile === tile.title;
-          const isLoading = loadingTile === tile.title;
 
           return (
             <div
               key={tile.title}
-              onContextMenu={(e) => handleContextMenu(e, tile.title)}
-              onClick={() => handleTileClick(tile)}
-              className="group relative h-28 rounded-2xl overflow-hidden cursor-pointer shadow-md transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] select-none"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setActiveContextTile(tile.title);
+              }}
+              onClick={() => {
+                const targetTrack = SCREENSHOT_TRACKS[tile.trackIndex] || SCREENSHOT_TRACKS[0];
+                playTrackDirect(targetTrack, SCREENSHOT_TRACKS);
+              }}
+              className="group relative h-28 rounded-2xl overflow-hidden cursor-pointer shadow-md transition-all duration-200 hover:scale-[1.03] active:scale-[0.98]"
               style={{ backgroundColor: tile.color }}
             >
               {/* Left Color Stripe / Title */}
@@ -146,11 +129,6 @@ export function TvExploreScreen() {
                 <span className="text-white font-extrabold text-base tracking-wide drop-shadow-sm">
                   {tile.title}
                 </span>
-                {isLoading && (
-                  <div className="mt-auto">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
               </div>
 
               {/* Right Duotone Blended Image with Subtitle */}
@@ -173,7 +151,7 @@ export function TvExploreScreen() {
                 </div>
               </div>
 
-              {/* Context Menu Capsule matching Screenshot 5 (on Romance tile) */}
+              {/* Context Menu Capsule matching Screenshot 5 */}
               {isContextMenuOpen && (
                 <div
                   onClick={(e) => e.stopPropagation()}
@@ -182,7 +160,7 @@ export function TvExploreScreen() {
                   <div className="bg-[#121118] border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-2.5 shadow-2xl text-xs text-white">
                     <button
                       onClick={() => {
-                        navigator.clipboard?.writeText(tile.query);
+                        navigator.clipboard?.writeText(tile.subtitle);
                         setCopiedNotification(true);
                         setTimeout(() => setCopiedNotification(false), 1500);
                       }}

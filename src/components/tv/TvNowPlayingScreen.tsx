@@ -4,21 +4,14 @@ import {
   MessageSquare,
   ListMusic,
   MoreHorizontal,
+  X,
   Play,
   Pause,
-  SkipBack,
-  SkipForward,
-  X,
-  Volume2,
-  VolumeX,
   Shuffle,
   Repeat,
-  Repeat1,
-  Share2,
-  Plus
+  Repeat1
 } from 'lucide-react';
 import { usePlayerStore, trackToSong } from '../../stores/playerStore';
-import type { Song } from '../../types';
 
 interface TvNowPlayingScreenProps {
   onBack: () => void;
@@ -38,8 +31,6 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
     currentTime,
     duration,
     togglePlay,
-    nextTrack,
-    previousTrack,
     setCurrentTime,
     isFavorite,
     toggleFavorite,
@@ -50,12 +41,11 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
     cycleRepeat,
     shuffleMode,
     toggleShuffle,
-    playSong
+    playTrackDirect
   } = usePlayerStore();
 
   const [isLyricsMode, setIsLyricsMode] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll synchronized lyrics
@@ -75,42 +65,23 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
     }
   }, [currentTime, isLyricsMode, lyrics]);
 
-  if (!currentTrack) {
-    return (
-      <div className="fixed inset-0 z-50 bg-[#0b0a10] flex flex-col items-center justify-center p-8 text-center text-white">
-        <div className="w-24 h-24 rounded-3xl bg-white/10 flex items-center justify-center mb-6">
-          <ListMusic className="w-12 h-12 text-white/50" />
-        </div>
-        <h2 className="text-3xl font-extrabold mb-2">No Track Playing</h2>
-        <p className="text-white/60 mb-6 max-w-md">Select any song from Home, Explore, or Library to start playback.</p>
-        <button
-          onClick={onBack}
-          className="px-8 py-3 bg-white text-black font-bold rounded-xl hover:bg-neutral-200 transition-all cursor-pointer"
-        >
-          Explore Music
-        </button>
-      </div>
-    );
-  }
-
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
   const currentMs = currentTime * 1000;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#09080e] text-white flex flex-col justify-between overflow-hidden select-none">
-      {/* 1. Dynamic Fullscreen Ambient Backdrop Mesh */}
+      {/* 1. Fullscreen Ambient Dynamic Artwork Blur Backdrop */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <img
           src={currentTrack.thumbnail}
           alt=""
-          className="w-full h-full object-cover scale-125 blur-3xl opacity-35 transition-all duration-1000"
+          className="w-full h-full object-cover scale-150 blur-3xl opacity-35 transition-all duration-700"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/70" />
-        <div className="absolute inset-0 bg-radial from-transparent to-black/70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/75" />
       </div>
 
-      {/* 2. Top Bar with Back Button */}
-      <div className="relative z-10 px-8 md:px-12 pt-6 flex items-center justify-between">
+      {/* 2. Top Bar with clean close / back button */}
+      <div className="relative z-10 px-8 md:px-14 pt-6 flex items-center justify-between">
         <button
           onClick={onBack}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition-all cursor-pointer text-white shadow-lg"
@@ -118,21 +89,16 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
         >
           <X className="w-5 h-5" />
         </button>
-
-        <div className="text-sm font-semibold text-white/60 uppercase tracking-widest">
-          Now Playing
-        </div>
-
         <div className="w-10" />
       </div>
 
-      {/* 3. Main Center Area: Album Cover OR Synchronized Lyrics */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-8 md:px-16 my-auto">
+      {/* 3. Center Artwork matching Screenshot 1 */}
+      <div className="relative z-10 flex-1 flex items-center justify-center px-8 my-auto">
         {isLyricsMode ? (
-          /* Synchronized Karaoke Lyrics View */
+          /* Synchronized Karaoke Lyrics Mode */
           <div
             ref={lyricsContainerRef}
-            className="w-full max-w-2xl h-[420px] overflow-y-auto space-y-6 text-center py-20 px-4 scrollbar-none"
+            className="w-full max-w-2xl h-[400px] overflow-y-auto space-y-6 text-center py-20 px-4 scrollbar-none"
           >
             {lyrics && lyrics.lines.length > 0 ? (
               lyrics.lines.map((line, idx) => {
@@ -155,38 +121,37 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
                 );
               })
             ) : (
-              <div className="py-24 text-white/50 text-lg">
-                Lyrics unavailable for this track.
+              <div className="py-24 text-white/50 text-base">
+                Synchronized lyrics loading...
               </div>
             )}
           </div>
         ) : (
-          /* Large Album Artwork matching Screenshot 1 */
-          <div className="relative group cursor-pointer" onClick={togglePlay}>
-            <div className="w-72 h-72 md:w-96 md:h-96 rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/40">
-              <img
-                src={currentTrack.thumbnail}
-                alt={currentTrack.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-            {/* Ambient Shadow glow */}
-            <div
-              className="absolute -inset-4 rounded-3xl blur-2xl opacity-40 -z-10 transition-opacity"
-              style={{
-                background: `radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)`
-              }}
+          /* Centered Album Cover matching Screenshot 1 */
+          <div
+            className="w-72 h-72 md:w-96 md:h-96 rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/40 cursor-pointer group relative"
+            onClick={togglePlay}
+          >
+            <img
+              src={currentTrack.thumbnail}
+              alt={currentTrack.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
+            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              <div className="w-16 h-16 rounded-full bg-white/90 text-black flex items-center justify-center shadow-2xl">
+                {isPlaying ? <Pause className="w-8 h-8 fill-black" /> : <Play className="w-8 h-8 fill-black ml-1" />}
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* 4. Bottom Section: Track Info (Left), 4 Frosted Buttons (Right), and Scrubber (Full Width) */}
-      <div className="relative z-10 px-8 md:px-14 pb-8 space-y-5">
+      {/* 4. Bottom Controls matching Screenshot 1 */}
+      <div className="relative z-10 px-8 md:px-14 pb-8 space-y-4">
         {/* Track Title/Artist on Left, 4 Circular Frosted Buttons on Right */}
         <div className="flex items-end justify-between gap-6">
           {/* Left: Title & Artist */}
-          <div className="space-y-1.5 max-w-xl">
+          <div className="space-y-1 max-w-xl">
             <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight truncate drop-shadow-md">
               {currentTrack.title}
             </h1>
@@ -238,7 +203,9 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
 
             {/* Button 4: More Options (•••) */}
             <button
-              onClick={() => setShowMenu(!showMenu)}
+              onClick={() => {
+                navigator.clipboard?.writeText(window.location.href);
+              }}
               className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white/80 transition-all cursor-pointer shadow-lg active:scale-95"
               title="Options"
             >
@@ -272,10 +239,9 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
             />
           </div>
 
-          {/* Time Display underneath progress bar on left */}
-          <div className="flex justify-between text-xs font-semibold text-white/60 px-0.5">
+          {/* Time Display underneath progress bar on left matching Screenshot 1 */}
+          <div className="text-xs font-semibold text-white/60 px-0.5">
             <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
           </div>
         </div>
       </div>
@@ -298,7 +264,7 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
               <div
                 key={`${t.id}-${idx}`}
                 onClick={() => {
-                  playSong(trackToSong(t), queue.map(trackToSong));
+                  playTrackDirect(t, queue);
                 }}
                 className={`p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-all ${
                   idx === queueIndex ? 'bg-white/20 font-bold' : 'hover:bg-white/10 text-white/80'
@@ -326,52 +292,6 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
                 {repeatMode === 'one' ? <Repeat1 className="w-4 h-4 text-red-400" /> : <Repeat className={`w-4 h-4 ${repeatMode === 'all' ? 'text-red-400' : ''}`} />}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Song Action Menu Dialog (•••) */}
-      {showMenu && (
-        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1a1726] border border-white/15 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="flex items-center gap-3 pb-3 border-b border-white/10">
-              <img src={currentTrack.thumbnail} alt="" className="w-12 h-12 rounded-xl object-cover" />
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-white text-sm truncate">{currentTrack.title}</h4>
-                <p className="text-xs text-white/50 truncate">{currentTrack.artist}</p>
-              </div>
-            </div>
-
-            <div className="space-y-1 text-sm">
-              <button
-                onClick={() => {
-                  toggleFavorite();
-                  setShowMenu(false);
-                }}
-                className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-3 text-white transition-colors cursor-pointer"
-              >
-                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-400 text-red-400' : ''}`} />
-                <span>{isFavorite ? 'Remove from Liked Songs' : 'Add to Liked Songs'}</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  navigator.clipboard?.writeText(window.location.href);
-                  setShowMenu(false);
-                }}
-                className="w-full px-3 py-2.5 rounded-xl hover:bg-white/10 flex items-center gap-3 text-white transition-colors cursor-pointer"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>Share Song Link</span>
-              </button>
-            </div>
-
-            <button
-              onClick={() => setShowMenu(false)}
-              className="w-full py-2.5 bg-white/10 hover:bg-white/15 rounded-xl text-xs font-bold text-white transition-all cursor-pointer"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}

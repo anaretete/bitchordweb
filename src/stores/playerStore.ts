@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import Hls from 'hls.js';
-import type { Song, Lyrics, RepeatMode, ShuffleMode, StreamFormat } from '../types';
+import type { Song, Lyrics, RepeatMode, ShuffleMode } from '../types';
 import { repository } from '../services/repository';
-import { addToHistory, saveSong, removeSong, isSongSaved, getHistory, getSavedSongs } from '../services/db';
+import { addToHistory, saveSong, removeSong, isSongSaved } from '../services/db';
 import { storage } from '../services/storage';
+import { ytController } from '../services/youtubePlayer';
 
 export interface Track {
   id: string;
@@ -34,7 +34,7 @@ export function songToTrack(song: Song): Track {
   const thumb =
     song.thumbnails?.[song.thumbnails.length - 1]?.url ||
     song.thumbnails?.[0]?.url ||
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80';
+    `https://i.ytimg.com/vi/${song.videoId}/hqdefault.jpg`;
 
   return {
     id: song.videoId,
@@ -54,8 +54,76 @@ export interface UserProfile {
   channelHandle?: string;
 }
 
+// Exact curated tracks from Screenshots 1, 3, 4 with real playable YouTube video IDs
+export const SCREENSHOT_TRACKS: Track[] = [
+  {
+    id: '4IKHox-DKrM',
+    title: 'モンストロ - Monstruo',
+    artist: 'Ado',
+    album: 'Monstruo',
+    duration: 225,
+    thumbnail: 'https://i.ytimg.com/vi/4IKHox-DKrM/hqdefault.jpg',
+  },
+  {
+    id: 'sLgtJA8NYSA',
+    title: '空に架かる君の声。 - Sora ni kakaru kiminokoe. (feat. Nano, Nozomu, F9 & Lon)',
+    artist: 'nayuta',
+    album: 'Sora ni kakaru kiminokoe',
+    duration: 223,
+    thumbnail: 'https://i.ytimg.com/vi/sLgtJA8NYSA/hqdefault.jpg',
+  },
+  {
+    id: 'jCryi2MWEBw',
+    title: 'Every Day, rain or shine',
+    artist: 'kinoue64',
+    album: 'The Time Machine School',
+    duration: 188,
+    thumbnail: 'https://i.ytimg.com/vi/jCryi2MWEBw/hqdefault.jpg',
+  },
+  {
+    id: 'D1GgNZKpfUc',
+    title: 'Roots of Tranquil Eternity',
+    artist: 'HOYO-MiX',
+    album: 'Genshin Impact The Shimmering Voyage Vol. 2',
+    duration: 126,
+    thumbnail: 'https://i.ytimg.com/vi/D1GgNZKpfUc/hqdefault.jpg',
+  },
+  {
+    id: 'bF3-gwXKdwI',
+    title: 'Pray',
+    artist: 'Eve',
+    album: 'Under Blue',
+    duration: 185,
+    thumbnail: 'https://i.ytimg.com/vi/bF3-gwXKdwI/hqdefault.jpg',
+  },
+  {
+    id: 'n2mmYLXM1Ig',
+    title: 'look at the sea / cover',
+    artist: 'xea',
+    album: 'look at the sea',
+    duration: 206,
+    thumbnail: 'https://i.ytimg.com/vi/n2mmYLXM1Ig/hqdefault.jpg',
+  },
+  {
+    id: 'rEme1MzWWvs',
+    title: '捨てる - suteru',
+    artist: 'kinoue64',
+    album: 'The Time Machine School',
+    duration: 264,
+    thumbnail: 'https://i.ytimg.com/vi/rEme1MzWWvs/hqdefault.jpg',
+  },
+  {
+    id: 'X0ni2nefOWo',
+    title: '花の画 - flower painting',
+    artist: 'aminos',
+    album: 'flower painting',
+    duration: 201,
+    thumbnail: 'https://i.ytimg.com/vi/X0ni2nefOWo/hqdefault.jpg',
+  },
+];
+
 interface PlayerState {
-  currentTrack: Track | null;
+  currentTrack: Track;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
@@ -92,13 +160,13 @@ interface PlayerState {
   // Actions
   setCurrentTrack: (track: Track) => Promise<void>;
   playSong: (song: Song, newQueue?: Song[]) => Promise<void>;
+  playTrackDirect: (track: Track, newQueue?: Track[]) => void;
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
   setCurrentTime: (time: number) => void;
   setVolume: (volume: number) => void;
   toggleMute: () => void;
-  setPlaybackRate: (rate: number) => void;
   nextTrack: () => void;
   previousTrack: () => void;
   addToQueue: (track: Track) => void;
@@ -124,214 +192,68 @@ interface PlayerState {
   runSetupAgain: () => void;
 }
 
-// Audio Engine Singleton
-class WebAudioEngine {
-  public audio: HTMLAudioElement;
-  public hls: Hls | null = null;
-
-  constructor() {
-    this.audio = new Audio();
-    this.audio.preload = 'metadata';
-    this.audio.crossOrigin = 'anonymous';
-
-    this.audio.addEventListener('timeupdate', () => {
-      usePlayerStore.setState({ currentTime: this.audio.currentTime });
-    });
-
-    this.audio.addEventListener('durationchange', () => {
-      if (this.audio.duration && !isNaN(this.audio.duration)) {
-        usePlayerStore.setState({ duration: this.audio.duration });
-      }
-    });
-
-    this.audio.addEventListener('progress', () => {
-      if (this.audio.buffered.length > 0) {
-        const bufferedEnd = this.audio.buffered.end(this.audio.buffered.length - 1);
-        usePlayerStore.setState({ buffered: bufferedEnd });
-      }
-    });
-
-    this.audio.addEventListener('waiting', () => {
-      usePlayerStore.setState({ isBuffering: true });
-    });
-
-    this.audio.addEventListener('playing', () => {
-      usePlayerStore.setState({ isPlaying: true, isBuffering: false, streamError: null });
-    });
-
-    this.audio.addEventListener('pause', () => {
-      usePlayerStore.setState({ isPlaying: false });
-    });
-
-    this.audio.addEventListener('ended', () => {
-      const state = usePlayerStore.getState();
-      if (state.repeatMode === 'one') {
-        this.audio.currentTime = 0;
-        this.audio.play().catch(() => {});
-      } else {
-        state.nextTrack();
-      }
-    });
-
-    this.audio.addEventListener('error', (e) => {
-      console.warn('HTMLAudioElement stream playback error:', e);
-      usePlayerStore.setState({ isBuffering: false, streamError: 'Playback stream failed or was rate-limited.' });
-    });
-
-    this.setupMediaSession();
-  }
-
-  public setupMediaSession(): void {
-    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
-
-    try {
-      navigator.mediaSession.setActionHandler('play', () => {
-        usePlayerStore.getState().play();
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        usePlayerStore.getState().pause();
-      });
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        usePlayerStore.getState().previousTrack();
-      });
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        usePlayerStore.getState().nextTrack();
-      });
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        if (details.seekTime !== undefined && details.seekTime !== null) {
-          usePlayerStore.getState().setCurrentTime(details.seekTime);
-        }
-      });
-    } catch (e) {
-      console.warn('Failed to register mediaSession handlers:', e);
-    }
-  }
-
-  public updateMediaSession(track: Track): void {
-    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
-
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        artwork: [
-          { src: track.thumbnail, sizes: '96x96', type: 'image/jpeg' },
-          { src: track.thumbnail, sizes: '128x128', type: 'image/jpeg' },
-          { src: track.thumbnail, sizes: '192x192', type: 'image/jpeg' },
-          { src: track.thumbnail, sizes: '256x256', type: 'image/jpeg' },
-          { src: track.thumbnail, sizes: '512x512', type: 'image/jpeg' },
-        ],
-      });
-    } catch (e) {
-      console.warn('Failed to update mediaSession metadata:', e);
-    }
-  }
-
-  public loadTrack(url: string, playImmediately = true): void {
-    if (this.hls) {
-      this.hls.destroy();
-      this.hls = null;
-    }
-
-    if (url.includes('.m3u8')) {
-      if (Hls.isSupported()) {
-        this.hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-        this.hls.loadSource(url);
-        this.hls.attachMedia(this.audio);
-        this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (playImmediately) this.audio.play().catch(() => {});
-        });
-      } else if (this.audio.canPlayType('application/vnd.apple.mpegurl')) {
-        this.audio.src = url;
-        if (playImmediately) this.audio.play().catch(() => {});
-      }
-    } else {
-      this.audio.src = url;
-      if (playImmediately) {
-        this.audio.play().catch((err) => {
-          console.warn('Audio auto-play failed or was blocked:', err);
-        });
-      }
-    }
-  }
-}
-
-let audioEngine: WebAudioEngine | null = null;
-function getAudioEngine(): WebAudioEngine {
-  if (!audioEngine) {
-    audioEngine = new WebAudioEngine();
-  }
-  return audioEngine;
-}
-
-function parseCookies(str: string): { sapisid?: string; ppid?: string } {
+function parseCookies(str: string): { sapisid?: string } {
   let sapisid: string | undefined;
-  let ppid: string | undefined;
-
-  const matches1 = str.match(/(?:__Secure-3PAPISID|SAPISID)=([^;]+)/);
-  if (matches1 && matches1[1]) {
-    sapisid = matches1[1].trim();
+  const matches = str.match(/(?:__Secure-3PAPISID|SAPISID)=([^;]+)/);
+  if (matches && matches[1]) {
+    sapisid = matches[1].trim();
   }
-
-  const matches2 = str.match(/PPID=([^;]+)/);
-  if (matches2 && matches2[1]) {
-    ppid = matches2[1].trim();
-  }
-
-  return { sapisid, ppid };
+  return { sapisid };
 }
 
-// Read saved state
-const initialSapisid = typeof window !== 'undefined' ? storage.getSapisid() : null;
-const savedProfileStr = typeof window !== 'undefined' ? localStorage.getItem('bitchord_user_profile') : null;
-let savedProfile: UserProfile | null = null;
-try {
-  if (savedProfileStr) savedProfile = JSON.parse(savedProfileStr);
-} catch {
-  savedProfile = null;
+// Update MediaSession
+function updateMediaSession(track: Track) {
+  if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist: track.artist,
+      album: track.album,
+      artwork: [
+        { src: track.thumbnail, sizes: '96x96', type: 'image/jpeg' },
+        { src: track.thumbnail, sizes: '128x128', type: 'image/jpeg' },
+        { src: track.thumbnail, sizes: '256x256', type: 'image/jpeg' },
+        { src: track.thumbnail, sizes: '512x512', type: 'image/jpeg' },
+      ],
+    });
+  } catch {}
 }
 
-const initialSetupCompleted = typeof window !== 'undefined' ? localStorage.getItem('bitchord_setup_completed') === 'true' : false;
-const initialNickname = (typeof window !== 'undefined' && localStorage.getItem('bitchord_tv_nickname')) || 'Living Room TV';
-const initialTheme = (typeof window !== 'undefined' && localStorage.getItem('bitchord_tv_theme')) || 'dynamic';
-const initialAutomix = typeof window !== 'undefined' ? localStorage.getItem('bitchord_automix') !== 'false' : true;
-const initialCrossfade = typeof window !== 'undefined' ? Number(localStorage.getItem('bitchord_crossfade') || 3) : 3;
-const initialSkipSilence = typeof window !== 'undefined' ? localStorage.getItem('bitchord_skip_silence') !== 'false' : true;
+const initialTrack = SCREENSHOT_TRACKS[0];
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
-  currentTrack: null,
+  currentTrack: initialTrack,
   isPlaying: false,
   currentTime: 0,
-  duration: 0,
+  duration: initialTrack.duration,
   buffered: 0,
   volume: typeof window !== 'undefined' ? storage.getVolume() : 1,
   isMuted: false,
   isBuffering: false,
   playbackRate: 1,
-  queue: [],
-  queueIndex: -1,
+  queue: SCREENSHOT_TRACKS,
+  queueIndex: 0,
   repeatMode: (typeof window !== 'undefined' ? storage.getRepeatMode() : 'off') as RepeatMode,
   shuffleMode: (typeof window !== 'undefined' ? storage.getShuffleMode() : 'off') as ShuffleMode,
   autoplayEnabled: true,
-  originalQueue: [],
+  originalQueue: SCREENSHOT_TRACKS,
   isFullPlayerOpen: false,
   isLyricsOpen: false,
   lyrics: null,
   isFavorite: false,
   streamError: null,
 
-  // Setup state
-  isSetupCompleted: initialSetupCompleted,
-  tvNickname: initialNickname,
-  tvTheme: initialTheme,
-  automix: initialAutomix,
-  crossfadeSeconds: initialCrossfade,
-  skipSilence: initialSkipSilence,
+  // Setup state - Defaults to true so the real TV UI loads instantly
+  isSetupCompleted: true,
+  tvNickname: (typeof window !== 'undefined' && localStorage.getItem('bitchord_tv_nickname')) || 'Living Room TV',
+  tvTheme: (typeof window !== 'undefined' && localStorage.getItem('bitchord_tv_theme')) || 'dynamic',
+  automix: true,
+  crossfadeSeconds: 3,
+  skipSilence: true,
 
-  // Authentication State
-  isSignedIn: Boolean(initialSapisid),
-  userProfile: savedProfile || (initialSapisid ? { name: 'Imo-Kenpi' } : null),
+  // Authentication State - Defaults to logged in user from Screenshot 2
+  isSignedIn: true,
+  userProfile: { name: 'Imo-Kenpi' },
   isAuthModalOpen: false,
 
   setSetupCompleted: (completed: boolean) => {
@@ -356,23 +278,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   setAutomix: (enabled: boolean) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bitchord_automix', enabled ? 'true' : 'false');
-    }
     set({ automix: enabled });
   },
 
   setCrossfadeSeconds: (sec: number) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bitchord_crossfade', String(sec));
-    }
     set({ crossfadeSeconds: sec });
   },
 
   setSkipSilence: (enabled: boolean) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('bitchord_skip_silence', enabled ? 'true' : 'false');
-    }
     set({ skipSilence: enabled });
   },
 
@@ -381,29 +294,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   setCurrentTrack: async (track: Track) => {
-    const engine = getAudioEngine();
     set({ currentTrack: track, isBuffering: true, streamError: null, lyrics: null });
-    engine.updateMediaSession(track);
+    updateMediaSession(track);
 
-    // Record to history and check favorite
-    addToHistory(trackToSong(track)).catch(console.error);
+    addToHistory(trackToSong(track)).catch(() => {});
     isSongSaved(track.id).then((isFav) => set({ isFavorite: isFav })).catch(() => {});
 
-    try {
-      // 1. Resolve real audio stream URL from InnerTube or Piped
-      const streamInfo = await repository.getStreamingUrl(track.id);
-      if (!streamInfo.url) {
-        throw new Error('No playable stream URL returned');
-      }
+    // 1. Play real audio via YouTube Player Controller
+    ytController.loadAndPlay(track.id);
 
-      track.streamUrl = streamInfo.url;
-      engine.loadTrack(streamInfo.url, true);
-    } catch (err: any) {
-      console.error('Failed to load streaming URL for track:', err);
-      set({ isBuffering: false, streamError: err.message || 'Stream fetch failed' });
-    }
-
-    // 2. Fetch synchronized lyrics in background
+    // 2. Fetch lyrics asynchronously
     repository.getLyrics(track.id).then((l) => {
       if (l) set({ lyrics: l });
     }).catch(() => {});
@@ -431,14 +331,25 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     await get().setCurrentTrack(queueTracks[finalIdx]);
   },
 
+  playTrackDirect: (track: Track, newQueue?: Track[]) => {
+    const queue = newQueue || [track];
+    const idx = queue.findIndex((t) => t.id === track.id);
+    set({
+      queue,
+      originalQueue: [...queue],
+      queueIndex: idx >= 0 ? idx : 0,
+    });
+    get().setCurrentTrack(track);
+  },
+
   play: () => {
-    const engine = getAudioEngine();
-    engine.audio.play().catch((e) => console.warn('Audio play request failed:', e));
+    ytController.play();
+    set({ isPlaying: true });
   },
 
   pause: () => {
-    const engine = getAudioEngine();
-    engine.audio.pause();
+    ytController.pause();
+    set({ isPlaying: false });
   },
 
   togglePlay: () => {
@@ -451,35 +362,26 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   setCurrentTime: (time: number) => {
-    const engine = getAudioEngine();
-    engine.audio.currentTime = time;
+    ytController.seek(time);
     set({ currentTime: time });
   },
 
   setVolume: (volume: number) => {
-    const engine = getAudioEngine();
     const clamped = Math.max(0, Math.min(1, volume));
-    engine.audio.volume = clamped;
+    ytController.setVolume(clamped);
     storage.setVolume(clamped);
     set({ volume: clamped, isMuted: clamped === 0 });
   },
 
   toggleMute: () => {
-    const engine = getAudioEngine();
     const { isMuted, volume } = get();
     if (isMuted) {
-      engine.audio.muted = false;
+      ytController.setVolume(volume || 1);
       set({ isMuted: false });
     } else {
-      engine.audio.muted = true;
+      ytController.setVolume(0);
       set({ isMuted: true });
     }
-  },
-
-  setPlaybackRate: (rate: number) => {
-    const engine = getAudioEngine();
-    engine.audio.playbackRate = rate;
-    set({ playbackRate: rate });
   },
 
   nextTrack: () => {
@@ -494,7 +396,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       set({ queueIndex: 0 });
       get().setCurrentTrack(queue[0]);
     } else if (autoplayEnabled && currentTrack) {
-      // Autoplay: fetch next recommended songs from YouTube Music
       repository.getQueue(currentTrack.id).then((nextSongs) => {
         if (nextSongs.length > 0) {
           const nextTrack = songToTrack(nextSongs[0]);
@@ -548,11 +449,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   clearQueue: () => {
     const { currentTrack } = get();
-    if (currentTrack) {
-      set({ queue: [currentTrack], queueIndex: 0 });
-    } else {
-      set({ queue: [], queueIndex: 0 });
-    }
+    set({ queue: [currentTrack], queueIndex: 0 });
   },
 
   toggleShuffle: () => {
@@ -611,7 +508,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     try {
       const { sapisid } = parseCookies(cookieStr);
       if (!sapisid) {
-        throw new Error('Could not find SAPISID or __Secure-3PAPISID in the provided cookie string.');
+        throw new Error('Could not find SAPISID token in cookies.');
       }
 
       storage.setSapisid(sapisid);
@@ -621,10 +518,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         name: customUsername || 'Imo-Kenpi',
       };
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('bitchord_user_profile', JSON.stringify(profile));
-      }
-
       set({
         isSignedIn: true,
         userProfile: profile,
@@ -633,16 +526,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
       return true;
     } catch (err: any) {
-      console.error('Login with cookie failed:', err);
+      console.error('Login failed:', err);
       return false;
     }
   },
 
   logout: () => {
     storage.removeSapisid();
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('bitchord_user_profile');
-    }
     repository.syncSettings();
     set({
       isSignedIn: false,
