@@ -2,10 +2,10 @@ import React from 'react';
 import { usePlayerStore, SCREENSHOT_TRACKS } from '../../stores/playerStore';
 
 export function TvHomeScreen() {
-  const { playTrackDirect, currentTrack, isPlaying } = usePlayerStore();
+  const { playTrackDirect, currentTrack, isPlaying, setFullPlayerOpen } = usePlayerStore();
 
-  // Exact 5 Recents cards visible in Screenshot 4
-  const recents = SCREENSHOT_TRACKS.slice(1, 6);
+  // Curated recent cards from screenshot tracks
+  const recents = SCREENSHOT_TRACKS.slice(0, 5);
 
   // Albums & Singles row matching lower portion of Screenshot 4
   const albumsAndSingles = [
@@ -66,7 +66,10 @@ export function TvHomeScreen() {
             return (
               <div
                 key={track.id}
-                onClick={() => playTrackDirect(track, SCREENSHOT_TRACKS)}
+                onClick={() => {
+                  playTrackDirect(track, SCREENSHOT_TRACKS);
+                  setFullPlayerOpen(true);
+                }}
                 className="group w-[210px] shrink-0 rounded-2xl overflow-hidden bg-[#24212f] hover:bg-[#2c283a] cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] shadow-lg flex flex-col"
               >
                 {/* Artwork Upper Portion */}
@@ -106,7 +109,10 @@ export function TvHomeScreen() {
           {albumsAndSingles.map((alb) => (
             <div
               key={alb.id}
-              onClick={() => playTrackDirect(alb.track, SCREENSHOT_TRACKS)}
+              onClick={() => {
+                playTrackDirect(alb.track, SCREENSHOT_TRACKS);
+                setFullPlayerOpen(true);
+              }}
               className="group w-[210px] shrink-0 rounded-2xl overflow-hidden bg-[#24212f] hover:bg-[#2c283a] cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] shadow-lg flex flex-col"
             >
               <div className="w-full aspect-square relative bg-neutral-900 overflow-hidden">

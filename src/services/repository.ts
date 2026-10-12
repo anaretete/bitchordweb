@@ -370,6 +370,11 @@ export class MusicRepository {
       };
     }
   }
+
+  public async getAccountInfo() {
+    this.syncSettings();
+    return this.innertube.getAccountInfo();
+  }
 }
 
 export const repository = new MusicRepository();

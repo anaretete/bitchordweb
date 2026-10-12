@@ -226,6 +226,22 @@ export class InnerTubeClient {
     return parsePlaylistDetail(raw, playlistId);
   }
 
+  public async getAccountInfo(): Promise<{ name: string; email?: string; channelHandle?: string; avatarUrl?: string } | null> {
+    try {
+      const raw = await this.post<any>('/account/account_menu', {});
+      const menu = raw?.actions?.[0]?.openPopupAction?.popup?.multiPageMenuRenderer?.header?.activeAccountHeaderRenderer;
+      if (!menu) return null;
+      return {
+        name: menu.accountName?.runs?.[0]?.text || 'Google User',
+        email: menu.email?.runs?.[0]?.text,
+        channelHandle: menu.channelHandle?.runs?.[0]?.text,
+        avatarUrl: menu.accountPhoto?.thumbnails?.slice(-1)[0]?.url,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   public async getQueue(videoId: string): Promise<Song[]> {
     const raw = await this.next(videoId);
     return parseQueue(raw);

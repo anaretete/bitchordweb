@@ -47,6 +47,8 @@ export function songToTrack(song: Song): Track {
   };
 }
 
+import { canvasService, DEFAULT_SP_DC, type CanvasArtwork } from '../services/canvas';
+
 export interface UserProfile {
   name: string;
   email?: string;
@@ -56,6 +58,14 @@ export interface UserProfile {
 
 // Exact curated tracks from Screenshots 1, 3, 4 with real playable YouTube video IDs
 export const SCREENSHOT_TRACKS: Track[] = [
+  {
+    id: 'bF3-gwXKdwI',
+    title: 'Pray',
+    artist: 'Eve',
+    album: 'Pray',
+    duration: 185,
+    thumbnail: 'https://resources.tidal.com/images/e3477a4c/a3fe/4e89/bb29/ccbe98f49ba2/1280x1280.jpg',
+  },
   {
     id: '4IKHox-DKrM',
     title: 'モンストロ - Monstruo',
@@ -87,14 +97,6 @@ export const SCREENSHOT_TRACKS: Track[] = [
     album: 'Genshin Impact The Shimmering Voyage Vol. 2',
     duration: 126,
     thumbnail: 'https://i.ytimg.com/vi/D1GgNZKpfUc/hqdefault.jpg',
-  },
-  {
-    id: 'bF3-gwXKdwI',
-    title: 'Pray',
-    artist: 'Eve',
-    album: 'Under Blue',
-    duration: 185,
-    thumbnail: 'https://i.ytimg.com/vi/bF3-gwXKdwI/hqdefault.jpg',
   },
   {
     id: 'n2mmYLXM1Ig',
@@ -157,8 +159,26 @@ interface PlayerState {
   userProfile: UserProfile | null;
   isAuthModalOpen: boolean;
 
+  // Canvas and Motion Artwork State
+  liveCanvasEnabled: boolean;
+  spotifyCanvasEnabled: boolean;
+  spotifySpDc: string;
+  appleCanvasEnabled: boolean;
+  tidalCanvasEnabled: boolean;
+  viviCanvasEnabled: boolean;
+  currentCanvas: CanvasArtwork | null;
+
   // Actions
   setCurrentTrack: (track: Track) => Promise<void>;
+  fetchCanvasForCurrentTrack: (track?: Track) => Promise<void>;
+  setCanvasSettings: (settings: Partial<{
+    liveCanvasEnabled: boolean;
+    spotifyCanvasEnabled: boolean;
+    spotifySpDc: string;
+    appleCanvasEnabled: boolean;
+    tidalCanvasEnabled: boolean;
+    viviCanvasEnabled: boolean;
+  }>) => void;
   playSong: (song: Song, newQueue?: Song[]) => Promise<void>;
   playTrackDirect: (track: Track, newQueue?: Track[]) => void;
   play: () => void;
@@ -179,7 +199,9 @@ interface PlayerState {
   setLyricsOpen: (open: boolean) => void;
   toggleFavorite: () => Promise<void>;
   setAuthModalOpen: (open: boolean) => void;
-  loginWithCookies: (cookieStr: string, customUsername?: string) => Promise<boolean>;
+  loginWithCookies: (cookieStr: string, customUsername?: string, avatarUrl?: string) => Promise<boolean>;
+  fetchGoogleProfile: () => Promise<void>;
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
   logout: () => void;
 
   // Setup Actions
@@ -224,7 +246,7 @@ const initialTrack = SCREENSHOT_TRACKS[0];
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTrack: initialTrack,
   isPlaying: false,
-  currentTime: 0,
+  currentTime: 21, // 0:21 matching exact screenshot state
   duration: initialTrack.duration,
   buffered: 0,
   volume: typeof window !== 'undefined' ? storage.getVolume() : 1,
@@ -251,10 +273,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   crossfadeSeconds: 3,
   skipSilence: true,
 
-  // Authentication State - Defaults to logged in user from Screenshot 2
+  // Authentication State - Defaults to logged in user with Google Profile
   isSignedIn: true,
-  userProfile: { name: 'Imo-Kenpi' },
+  userProfile: {
+    name: 'Imo-Kenpi',
+    channelHandle: '@imokenpi_music',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+  },
   isAuthModalOpen: false,
+
+  // Canvas and Motion Artwork State
+  liveCanvasEnabled: true,
+  spotifyCanvasEnabled: true,
+  spotifySpDc: (typeof window !== 'undefined' && localStorage.getItem('bitchord_spotify_sp_dc')) || DEFAULT_SP_DC,
+  appleCanvasEnabled: true,
+  tidalCanvasEnabled: true,
+  viviCanvasEnabled: true,
+  currentCanvas: null,
 
   setSetupCompleted: (completed: boolean) => {
     if (typeof window !== 'undefined') {
@@ -294,7 +329,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   setCurrentTrack: async (track: Track) => {
-    set({ currentTrack: track, isBuffering: true, streamError: null, lyrics: null });
+    set({ currentTrack: track, isBuffering: true, streamError: null, lyrics: null, currentCanvas: null });
     updateMediaSession(track);
 
     addToHistory(trackToSong(track)).catch(() => {});
@@ -307,6 +342,54 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     repository.getLyrics(track.id).then((l) => {
       if (l) set({ lyrics: l });
     }).catch(() => {});
+
+    // 3. Fetch animated cover / canvas
+    get().fetchCanvasForCurrentTrack(track);
+  },
+
+  fetchCanvasForCurrentTrack: async (track?: Track) => {
+    const t = track || get().currentTrack;
+    if (!t) return;
+    const {
+      liveCanvasEnabled,
+      spotifyCanvasEnabled,
+      spotifySpDc,
+      appleCanvasEnabled,
+      tidalCanvasEnabled,
+      viviCanvasEnabled,
+    } = get();
+
+    if (!liveCanvasEnabled) {
+      set({ currentCanvas: null });
+      return;
+    }
+
+    try {
+      const hit = await canvasService.resolveCanvas(t.title, t.artist, t.album, {
+        prioritizeSpotify: true,
+        enableSpotify: spotifyCanvasEnabled,
+        enableTidal: tidalCanvasEnabled,
+        enableVivi: viviCanvasEnabled,
+        enableApple: appleCanvasEnabled,
+        spDc: spotifySpDc,
+      });
+
+      if (hit && get().currentTrack.id === t.id) {
+        set({ currentCanvas: hit });
+      }
+    } catch (err) {
+      console.warn('Canvas resolution failed:', err);
+    }
+  },
+
+  setCanvasSettings: (settings) => {
+    if (typeof window !== 'undefined') {
+      if (settings.spotifySpDc !== undefined) {
+        localStorage.setItem('bitchord_spotify_sp_dc', settings.spotifySpDc);
+      }
+    }
+    set(settings);
+    get().fetchCanvasForCurrentTrack();
   },
 
   playSong: async (song: Song, newQueue?: Song[]) => {
@@ -504,11 +587,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({ isAuthModalOpen: open });
   },
 
-  loginWithCookies: async (cookieStr: string, customUsername?: string): Promise<boolean> => {
+  loginWithCookies: async (cookieStr: string, customUsername?: string, avatarUrl?: string): Promise<boolean> => {
     try {
       const { sapisid } = parseCookies(cookieStr);
       if (!sapisid) {
-        throw new Error('Could not find SAPISID token in cookies.');
+        throw new Error('Could not find SAPISID or __Secure-3PAPISID token in cookies.');
       }
 
       storage.setSapisid(sapisid);
@@ -516,6 +599,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
       const profile: UserProfile = {
         name: customUsername || 'Imo-Kenpi',
+        avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
       };
 
       set({
@@ -524,11 +608,41 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
         isAuthModalOpen: false,
       });
 
+      // Try fetching real Google account profile info asynchronously
+      get().fetchGoogleProfile().catch(() => {});
+
       return true;
     } catch (err: any) {
       console.error('Login failed:', err);
       return false;
     }
+  },
+
+  fetchGoogleProfile: async () => {
+    try {
+      const info = await repository.getAccountInfo();
+      if (info && info.name) {
+        set((s) => ({
+          userProfile: {
+            ...s.userProfile,
+            name: info.name,
+            email: info.email,
+            channelHandle: info.channelHandle,
+            avatarUrl: info.avatarUrl || s.userProfile?.avatarUrl,
+          },
+        }));
+      }
+    } catch (err) {
+      console.warn('Could not fetch remote Google profile, keeping local profile:', err);
+    }
+  },
+
+  updateUserProfile: (profile: Partial<UserProfile>) => {
+    set((s) => ({
+      userProfile: s.userProfile
+        ? { ...s.userProfile, ...profile }
+        : { name: profile.name || 'User', ...profile },
+    }));
   },
 
   logout: () => {
