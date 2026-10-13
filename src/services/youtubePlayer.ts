@@ -14,6 +14,7 @@ declare global {
 class YouTubePlayerController {
   private player: any = null;
   private isReady = false;
+  private currentVideoId: string | null = 'bF3-gwXKdwI';
   private pendingVideoId: string | null = null;
   private pollInterval: any = null;
 
@@ -63,7 +64,7 @@ class YouTubePlayerController {
       this.player = new window.YT.Player('bitchord-yt-player-mount', {
         height: '1',
         width: '1',
-        videoId: '4IKHox-DKrM', // Default: Ado - Monstruo
+        videoId: 'bF3-gwXKdwI', // Default: Eve - Pray
         playerVars: {
           autoplay: 0,
           controls: 0,
@@ -140,12 +141,18 @@ class YouTubePlayerController {
     }, 250);
   }
 
-  public loadAndPlay(videoId: string) {
+  public loadAndPlay(videoId: string, forceRestart = false) {
     if (!this.player || !this.isReady) {
       this.pendingVideoId = videoId;
       return;
     }
 
+    if (this.currentVideoId === videoId && !forceRestart) {
+      this.play();
+      return;
+    }
+
+    this.currentVideoId = videoId;
     try {
       this.player.loadVideoById({
         videoId: videoId,

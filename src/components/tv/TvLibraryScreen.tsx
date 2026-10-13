@@ -8,7 +8,7 @@ function formatDuration(sec: number): string {
 }
 
 export function TvLibraryScreen() {
-  const { playTrackDirect, currentTrack, isPlaying } = usePlayerStore();
+  const { playTrackDirect, currentTrack, isPlaying, setFullPlayerOpen } = usePlayerStore();
   const [activeCategory, setActiveCategory] = useState('Recently Played');
 
   const categories = [
@@ -22,22 +22,30 @@ export function TvLibraryScreen() {
     'Podcasts',
   ];
 
-  // Exactly the songs from Screenshot 3
-  const librarySongs = SCREENSHOT_TRACKS.slice(1);
+  // Exactly the songs matching Screenshot 3
+  const librarySongs = [
+    SCREENSHOT_TRACKS[2], // nayuta - 空に架かる君の声。
+    SCREENSHOT_TRACKS[3], // kinoue64 - Every Day, rain or shine
+    SCREENSHOT_TRACKS[4], // HOYO-MiX - Roots of Tranquil Eternity
+    SCREENSHOT_TRACKS[0], // Eve - Pray
+    SCREENSHOT_TRACKS[5], // xea - look at the sea / cover
+    SCREENSHOT_TRACKS[6] || SCREENSHOT_TRACKS[1], // kinoue64 - 捨てる - suteru
+    SCREENSHOT_TRACKS[7] || SCREENSHOT_TRACKS[2], // aminos - 花の画 - flower painting
+  ];
 
   return (
-    <div className="pt-24 pb-16 px-8 md:px-14 flex flex-col md:flex-row gap-10 max-w-7xl mx-auto h-[calc(100vh-6rem)] select-none">
+    <div className="pt-24 pb-20 px-6 sm:px-10 md:px-14 flex flex-col md:flex-row gap-10 max-w-7xl mx-auto select-none">
       {/* Left Sub-Navigation Menu matching Screenshot 3 */}
-      <div className="w-56 shrink-0 flex flex-col gap-1 py-2">
+      <div className="w-full md:w-56 shrink-0 flex md:flex-col gap-1.5 py-2 overflow-x-auto md:overflow-visible scrollbar-none">
         {categories.map((c) => {
           const isActive = activeCategory === c;
           return (
             <button
               key={c}
               onClick={() => setActiveCategory(c)}
-              className={`w-full text-left px-5 py-3 rounded-2xl text-base font-medium transition-all cursor-pointer ${
+              className={`text-left px-5 py-2.5 rounded-full md:rounded-2xl text-sm md:text-base font-medium transition-all cursor-pointer shrink-0 ${
                 isActive
-                  ? 'bg-[#282634] text-white font-semibold shadow-md'
+                  ? 'bg-[#313040] text-white font-semibold shadow-md'
                   : 'text-white/70 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
@@ -48,15 +56,18 @@ export function TvLibraryScreen() {
       </div>
 
       {/* Right Tracks Pane matching Screenshot 3 */}
-      <div className="flex-1 overflow-y-auto py-2 pr-4 space-y-2 scrollbar-none">
-        {librarySongs.map((track) => {
+      <div className="flex-1 py-2 space-y-1.5">
+        {librarySongs.map((track, idx) => {
           const isCurrent = currentTrack?.id === track.id;
 
           return (
             <div
-              key={track.id}
-              onClick={() => playTrackDirect(track, SCREENSHOT_TRACKS)}
-              className={`group px-4 py-2.5 rounded-2xl flex items-center justify-between cursor-pointer transition-all ${
+              key={`${track.id}-${idx}`}
+              onClick={() => {
+                playTrackDirect(track, librarySongs);
+                setFullPlayerOpen(true);
+              }}
+              className={`group px-4 py-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all ${
                 isCurrent
                   ? 'bg-white/15 shadow-md'
                   : 'hover:bg-white/[0.06] active:bg-white/[0.08]'
@@ -78,17 +89,17 @@ export function TvLibraryScreen() {
                 </div>
 
                 <div className="min-w-0">
-                  <h4 className="text-sm font-medium text-white truncate group-hover:text-white">
+                  <h4 className="text-sm md:text-base font-medium text-white truncate group-hover:text-white">
                     {track.title}
                   </h4>
-                  <p className="text-xs text-white/50 truncate mt-0.5">
+                  <p className="text-xs md:text-sm text-white/50 truncate mt-0.5">
                     {track.artist}
                   </p>
                 </div>
               </div>
 
               {/* Right-aligned duration timestamp */}
-              <div className="shrink-0 text-xs text-white/50 tabular-nums">
+              <div className="shrink-0 text-xs md:text-sm text-white/50 tabular-nums">
                 {formatDuration(track.duration)}
               </div>
             </div>

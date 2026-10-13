@@ -1,29 +1,33 @@
 import React from 'react';
-import { Search, Settings, Music, User } from 'lucide-react';
+import { Search, Settings } from 'lucide-react';
 import { usePlayerStore } from '../../stores/playerStore';
 
 interface TvTopNavigationBarProps {
   activeTab: 'home' | 'explore' | 'library' | 'settings' | 'search';
+  isNowPlayingOpen: boolean;
   onSelectTab: (tab: 'home' | 'explore' | 'library' | 'settings' | 'search') => void;
-  onOpenNowPlaying: () => void;
+  onToggleNowPlaying: () => void;
 }
 
 export function TvTopNavigationBar({
   activeTab,
+  isNowPlayingOpen,
   onSelectTab,
-  onOpenNowPlaying,
+  onToggleNowPlaying,
 }: TvTopNavigationBarProps) {
   const { isSignedIn, userProfile, setAuthModalOpen } = usePlayerStore();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 px-8 md:px-12 pt-6 pb-4 flex items-center justify-between pointer-events-none">
-      {/* Left: BitChord Logo (3 Curved Waves) */}
+    <header className="fixed top-0 left-0 right-0 z-40 px-6 sm:px-10 md:px-14 pt-5 pb-3 flex items-center justify-between pointer-events-none select-none">
+      {/* Left: BitChord Wave Logo (3 Curved White Waves) */}
       <div className="flex items-center gap-3 pointer-events-auto">
         <button
-          onClick={() => onSelectTab('home')}
+          onClick={() => {
+            onSelectTab('home');
+          }}
           className="flex items-center gap-2 group cursor-pointer focus:outline-none"
+          title="BitChord TV"
         >
-          {/* Logo 3 waves matching ic_logo */}
           <div className="w-9 h-9 flex items-center justify-center">
             <svg className="w-8 h-8 text-white transition-transform group-hover:scale-105" viewBox="0 0 24 24">
               <path
@@ -38,14 +42,14 @@ export function TvTopNavigationBar({
         </button>
       </div>
 
-      {/* Center: Floating Capsule Navigation Pill Bar */}
-      <nav className="pointer-events-auto bg-[#1b1924]/85 backdrop-blur-xl border border-white/10 rounded-full px-2 py-1.5 flex items-center gap-1 shadow-2xl">
+      {/* Center: Floating Capsule Navigation Pill Bar matching Screenshot 4 */}
+      <nav className="pointer-events-auto bg-[#262432]/90 backdrop-blur-2xl border border-white/5 rounded-full px-2 py-1.5 flex items-center gap-1 shadow-2xl">
         {/* Home */}
         <button
           onClick={() => onSelectTab('home')}
           className={`px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-            activeTab === 'home'
-              ? 'bg-[#3e3b4a] text-white shadow-md'
+            !isNowPlayingOpen && activeTab === 'home'
+              ? 'bg-[#4a475a] text-white shadow-md'
               : 'text-white/70 hover:text-white'
           }`}
         >
@@ -56,8 +60,8 @@ export function TvTopNavigationBar({
         <button
           onClick={() => onSelectTab('explore')}
           className={`px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-            activeTab === 'explore'
-              ? 'bg-[#3e3b4a] text-white shadow-md'
+            !isNowPlayingOpen && activeTab === 'explore'
+              ? 'bg-[#4a475a] text-white shadow-md'
               : 'text-white/70 hover:text-white'
           }`}
         >
@@ -68,8 +72,8 @@ export function TvTopNavigationBar({
         <button
           onClick={() => onSelectTab('library')}
           className={`px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
-            activeTab === 'library'
-              ? 'bg-[#3e3b4a] text-white shadow-md'
+            !isNowPlayingOpen && activeTab === 'library'
+              ? 'bg-[#4a475a] text-white shadow-md'
               : 'text-white/70 hover:text-white'
           }`}
         >
@@ -78,8 +82,12 @@ export function TvTopNavigationBar({
 
         {/* Now Playing */}
         <button
-          onClick={onOpenNowPlaying}
-          className="px-5 py-2 rounded-full text-sm font-semibold text-white/70 hover:text-white transition-all cursor-pointer"
+          onClick={onToggleNowPlaying}
+          className={`px-5 py-2 rounded-full text-sm font-semibold transition-all cursor-pointer ${
+            isNowPlayingOpen
+              ? 'bg-[#4a475a] text-white shadow-md'
+              : 'text-white/70 hover:text-white'
+          }`}
         >
           Now Playing
         </button>
@@ -88,11 +96,12 @@ export function TvTopNavigationBar({
         <button
           onClick={() => onSelectTab('search')}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-            activeTab === 'search'
-              ? 'bg-[#3e3b4a] text-white shadow-md'
+            !isNowPlayingOpen && activeTab === 'search'
+              ? 'bg-[#4a475a] text-white shadow-md'
               : 'text-white/70 hover:text-white'
           }`}
           aria-label="Search"
+          title="Search"
         >
           <Search className="w-4 h-4" />
         </button>
@@ -101,27 +110,27 @@ export function TvTopNavigationBar({
         <button
           onClick={() => onSelectTab('settings')}
           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
-            activeTab === 'settings'
-              ? 'bg-[#3e3b4a] text-white shadow-md'
+            !isNowPlayingOpen && activeTab === 'settings'
+              ? 'bg-[#4a475a] text-white shadow-md'
               : 'text-white/70 hover:text-white'
           }`}
           aria-label="Settings"
+          title="Settings"
         >
           <Settings className="w-4 h-4" />
         </button>
       </nav>
 
-      {/* Right: User Avatar */}
+      {/* Right: User Avatar matching Screenshot 4 */}
       <div className="flex items-center gap-3 pointer-events-auto">
         <button
           onClick={() => setAuthModalOpen(true)}
           className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white transition-all cursor-pointer shadow-lg active:scale-95 bg-[#252332] flex items-center justify-center"
-          title={isSignedIn ? userProfile?.name || 'Imo-Kenpi' : 'Sign in to YouTube Music'}
+          title={isSignedIn ? userProfile?.name || 'Imo-Kenpi' : 'Google & YouTube Music Sign-In'}
         >
           {userProfile?.avatarUrl ? (
             <img src={userProfile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
-            // Anime boy with cap default avatar matching screenshot
             <img
               src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
               alt="Avatar"

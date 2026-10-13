@@ -11,12 +11,11 @@ import {
   Repeat,
   Repeat1,
   Share2,
-  Activity,
-  Tv,
-  Check,
-  Film
+  Film,
+  Info,
+  ArrowLeft
 } from 'lucide-react';
-import { usePlayerStore, trackToSong } from '../../stores/playerStore';
+import { usePlayerStore } from '../../stores/playerStore';
 
 interface TvNowPlayingScreenProps {
   onBack: () => void;
@@ -49,7 +48,8 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
     playTrackDirect,
     currentCanvas,
     liveCanvasEnabled,
-    fetchCanvasForCurrentTrack
+    fetchCanvasForCurrentTrack,
+    fetchLyricsForCurrentTrack,
   } = usePlayerStore();
 
   const [isLyricsMode, setIsLyricsMode] = useState(false);
@@ -57,17 +57,22 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
   const [showOptionsModal, setShowOptionsModal] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [videoError, setVideoError] = useState(false);
+
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const scrubberRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+  const lastActiveIdxRef = useRef<number>(-1);
+  const userScrolledTimeRef = useRef<number>(0);
 
-  // Auto-fetch canvas when track changes
+  // Auto-fetch canvas & lyrics when track changes
   useEffect(() => {
     setVideoError(false);
     fetchCanvasForCurrentTrack();
+    fetchLyricsForCurrentTrack();
+    lastActiveIdxRef.current = -1;
   }, [currentTrack.id]);
 
-  // Keyboard navigation (Escape to back, Space to toggle play)
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Backspace') {
@@ -80,7 +85,7 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
         } else {
           onBack();
         }
-      } else if (e.code === 'Space' && e.target === document.body) {
+      } else if (e.code === 'Space' && (e.target === document.body || e.target === document.documentElement)) {
         e.preventDefault();
         togglePlay();
       }
@@ -89,7 +94,7 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showOptionsModal, showQueue, isLyricsMode, onBack, togglePlay]);
 
-  // Auto-scroll synchronized karaoke lyrics
+  // Auto-scroll synchronized karaoke lyrics smoothly on line transition
   useEffect(() => {
     if (!isLyricsMode || !lyrics?.lines || !lyricsContainerRef.current) return;
     const currentMs = currentTime * 1000;
@@ -98,10 +103,14 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
       return currentMs >= line.startTimeMs && (!next || currentMs < next.startTimeMs);
     });
 
-    if (activeIdx >= 0) {
-      const el = lyricsContainerRef.current.children[activeIdx] as HTMLElement;
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (activeIdx >= 0 && activeIdx !== lastActiveIdxRef.current) {
+      lastActiveIdxRef.current = activeIdx;
+      // Only auto-scroll if user has not interacted with scroll within 3 seconds
+      if (Date.now() - userScrolledTimeRef.current > 3000) {
+        const el = lyricsContainerRef.current.children[activeIdx] as HTMLElement;
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     }
   }, [currentTime, isLyricsMode, lyrics]);
@@ -148,7 +157,7 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
   const hasCanvasVideo = liveCanvasEnabled && currentCanvas?.url && !videoError;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0c0a10] text-white flex flex-col justify-between overflow-hidden select-none">
+    <div className="fixed inset-0 z-50 bg-[#100e17] text-white flex flex-col justify-between overflow-hidden select-none">
       {/* 1. Ambient Dynamic Artwork Backdrop Blur */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <img
@@ -156,18 +165,18 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
           alt=""
           className="w-full h-full object-cover scale-150 blur-3xl opacity-30 transition-all duration-1000"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0c0a10] via-black/50 to-[#0c0a10]/80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#100e17] via-black/55 to-[#100e17]/85" />
       </div>
 
-      {/* 2. Top Bar with back button */}
-      <div className="relative z-10 px-6 sm:px-12 pt-6 flex items-center justify-between">
+      {/* 2. Top Bar (Close button and canvas badge) */}
+      <div className="relative z-20 px-8 sm:px-14 pt-6 flex items-center justify-between">
         <button
-          onClick={onBack}
+          onClick={isLyricsMode ? () => setIsLyricsMode(false) : onBack}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition-all cursor-pointer text-white/80 hover:text-white shadow-lg backdrop-blur-md border border-white/5"
           aria-label="Back"
-          title="Back to Browser (Esc)"
+          title={isLyricsMode ? 'Return to Cover Art' : 'Back (Esc)'}
         >
-          <X className="w-5 h-5" />
+          {isLyricsMode ? <ArrowLeft className="w-5 h-5" /> : <X className="w-5 h-5" />}
         </button>
 
         {hasCanvasVideo && (
@@ -178,15 +187,77 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
         )}
       </div>
 
-      {/* 3. Center Section: 1:1 Album Artwork or Synced Lyrics */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-6 my-auto">
-        {isLyricsMode ? (
-          /* Synced Karaoke Lyrics View */
+      {/* 3. Center Section */}
+      {isLyricsMode ? (
+        /* Full 2-Column Apple TV / BitChord TV Lyrics Overlay */
+        <div className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center px-8 md:px-16 py-4 gap-12 max-w-7xl mx-auto w-full h-[calc(100vh-140px)]">
+          {/* Left Column: Artwork + Title + Artist + Nerd Stats */}
+          <div className="w-full md:w-[38%] flex flex-col items-center md:items-start text-center md:text-left shrink-0">
+            <div className="w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/60 relative group">
+              {hasCanvasVideo ? (
+                <video
+                  src={currentCanvas.url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  onError={() => setVideoError(true)}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  src={currentTrack.thumbnail}
+                  alt={currentTrack.title}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+
+            <div className="mt-5 space-y-1">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight drop-shadow-md line-clamp-2">
+                {currentTrack.title}
+              </h2>
+              <p className="text-base font-medium text-white/70">
+                {currentTrack.artist}
+              </p>
+            </div>
+
+            {/* Audio Stream Stats Pill */}
+            <div className="mt-4 px-3.5 py-1.5 rounded-xl bg-black/50 border border-white/10 flex items-center gap-2 text-xs font-mono text-white/80">
+              <Info className="w-3.5 h-3.5 text-red-400 shrink-0" />
+              <span>Opus / FLAC • 48 kHz / 24-bit • Lossless</span>
+            </div>
+
+            {/* BitChord Wave Logo Badge */}
+            <div className="mt-4 flex items-center gap-2 text-white/40 text-xs font-medium">
+              <svg className="w-5 h-5 text-white/60" viewBox="0 0 24 24">
+                <path
+                  d="M4 6.5c5-2.2 11-2.2 16 0M4 11.5c5-2.2 11-2.2 16 0M4 16.5c5-2.2 11-2.2 16 0"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+              </svg>
+              <span>BitChord Synchronized Lyrics</span>
+            </div>
+          </div>
+
+          {/* Right Column: Fluid Auto-Scrolling Karaoke Lyrics Window */}
           <div
             ref={lyricsContainerRef}
-            className="w-full max-w-2xl h-[400px] overflow-y-auto space-y-6 text-center py-20 px-4 scrollbar-none"
+            onScroll={() => {
+              userScrolledTimeRef.current = Date.now();
+            }}
+            onWheel={() => {
+              userScrolledTimeRef.current = Date.now();
+            }}
+            onTouchMove={() => {
+              userScrolledTimeRef.current = Date.now();
+            }}
+            className="w-full md:w-[62%] h-[60vh] md:h-[70vh] overflow-y-auto space-y-7 md:space-y-8 py-32 px-4 md:px-8 text-left scrollbar-none touch-pan-y"
           >
-            {lyrics && lyrics.lines.length > 0 ? (
+            {lyrics && lyrics.lines && lyrics.lines.length > 0 ? (
               lyrics.lines.map((line, idx) => {
                 const isCurrent =
                   currentMs >= line.startTimeMs &&
@@ -196,10 +267,10 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
                   <p
                     key={idx}
                     onClick={() => setCurrentTime(line.startTimeMs / 1000)}
-                    className={`cursor-pointer transition-all duration-300 ${
+                    className={`cursor-pointer transition-all duration-300 leading-snug select-text ${
                       isCurrent
-                        ? 'text-white font-extrabold text-2xl md:text-3xl scale-105 drop-shadow-[0_0_24px_rgba(255,255,255,0.7)]'
-                        : 'text-white/35 font-semibold text-lg md:text-xl hover:text-white/70'
+                        ? 'text-white font-extrabold text-2xl sm:text-3xl md:text-4xl scale-[1.02] origin-left drop-shadow-[0_0_24px_rgba(255,255,255,0.7)]'
+                        : 'text-white/35 font-semibold text-lg sm:text-xl md:text-2xl hover:text-white/70'
                     }`}
                   >
                     {line.text}
@@ -207,15 +278,17 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
                 );
               })
             ) : (
-              <div className="py-24 text-white/40 text-base font-medium">
-                {lyrics ? 'No synchronized lyrics available for this track' : 'Loading synchronized lyrics...'}
+              <div className="py-24 text-white/40 text-lg font-medium text-center">
+                Loading synchronized lyrics...
               </div>
             )}
           </div>
-        ) : (
-          /* Centered Album Artwork matching Screenshot 1 */
+        </div>
+      ) : (
+        /* Centered Album Artwork matching Screenshot 1 */
+        <div className="relative z-10 flex-1 flex items-center justify-center px-6 my-auto">
           <div
-            className="w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-black/50 cursor-pointer group relative"
+            className="w-68 h-68 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-3xl overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.85)] border border-white/10 bg-black/60 cursor-pointer group relative"
             onClick={togglePlay}
           >
             {hasCanvasVideo ? (
@@ -243,16 +316,16 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 4. Bottom Controls matching Screenshot 1 */}
-      <div className="relative z-10 px-6 sm:px-12 md:px-16 pb-8 space-y-4">
+      <div className="relative z-20 px-8 sm:px-14 md:px-20 pb-8 space-y-3.5">
         {/* Track Title/Artist on Left, 4 Circular Frosted Buttons on Right */}
         <div className="flex items-end justify-between gap-6">
           {/* Left: Title & Artist */}
           <div className="space-y-1 min-w-0 max-w-xl">
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight truncate drop-shadow-md">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight truncate drop-shadow-md">
               {currentTrack.title}
             </h1>
             <p className="text-sm sm:text-base font-medium text-white/60 truncate">
@@ -261,16 +334,16 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
           </div>
 
           {/* Right: 4 Frosted Circular Action Buttons matching Screenshot 1 */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3.5 shrink-0">
             {/* Button 1: Like / Heart */}
             <button
               onClick={toggleFavorite}
-              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg backdrop-blur-md active:scale-95 ${
+              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
                 isFavorite
                   ? 'bg-red-600/30 text-red-400 border-red-500/50'
-                  : 'bg-white/10 hover:bg-white/20 border-white/10 text-white/80 hover:text-white'
+                  : 'bg-[#252230]/85 hover:bg-[#322d40] border-white/5 text-white/80 hover:text-white'
               }`}
-              title={isFavorite ? 'Remove from Liked Songs' : 'Like Song'}
+              title={isFavorite ? 'Remove from Liked' : 'Like'}
             >
               <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-400' : ''}`} />
             </button>
@@ -278,10 +351,10 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
             {/* Button 2: Synced Lyrics (Speech Bubble with quotes) */}
             <button
               onClick={() => setIsLyricsMode(!isLyricsMode)}
-              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg backdrop-blur-md active:scale-95 ${
+              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
                 isLyricsMode
                   ? 'bg-white/30 text-white border-white/50'
-                  : 'bg-white/10 hover:bg-white/20 border-white/10 text-white/80 hover:text-white'
+                  : 'bg-[#252230]/85 hover:bg-[#322d40] border-white/5 text-white/80 hover:text-white'
               }`}
               title="Synchronized Lyrics"
             >
@@ -291,10 +364,10 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
             {/* Button 3: Queue / Up Next (List icon) */}
             <button
               onClick={() => setShowQueue(!showQueue)}
-              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg backdrop-blur-md active:scale-95 ${
+              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
                 showQueue
                   ? 'bg-white/30 text-white border-white/50'
-                  : 'bg-white/10 hover:bg-white/20 border-white/10 text-white/80 hover:text-white'
+                  : 'bg-[#252230]/85 hover:bg-[#322d40] border-white/5 text-white/80 hover:text-white'
               }`}
               title="Up Next Queue"
             >
@@ -304,7 +377,7 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
             {/* Button 4: More Options (•••) */}
             <button
               onClick={() => setShowOptionsModal(true)}
-              className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer shadow-lg backdrop-blur-md active:scale-95"
+              className="w-12 h-12 rounded-full bg-[#252230]/85 hover:bg-[#322d40] border border-white/5 flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
               title="More Options"
             >
               <MoreHorizontal className="w-5 h-5" />
@@ -337,14 +410,13 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
           {/* Time Display underneath progress bar on left matching Screenshot 1 */}
           <div className="flex items-center justify-between text-xs font-semibold text-white/55 px-0.5">
             <span>{formatTime(currentTime)}</span>
-            <span className="text-white/40">{formatTime(duration)}</span>
           </div>
         </div>
       </div>
 
       {/* Queue Drawer Overlay */}
       {showQueue && (
-        <div className="absolute inset-y-0 right-0 z-30 w-full max-w-md bg-[#12101b]/95 backdrop-blur-2xl border-l border-white/10 p-6 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200">
+        <div className="absolute inset-y-0 right-0 z-30 w-full max-w-md bg-[#13111b]/95 backdrop-blur-2xl border-l border-white/10 p-6 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200">
           <div className="flex items-center justify-between pb-4 border-b border-white/10">
             <div>
               <h3 className="text-lg font-bold text-white">Up Next</h3>
@@ -412,7 +484,7 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
       {/* Track Options Modal */}
       {showOptionsModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#12101b] border border-white/10 rounded-2xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-[#13111b] border border-white/10 rounded-2xl max-w-sm w-full p-6 text-white shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-white/10">
               <div className="min-w-0 pr-4">
                 <h3 className="font-bold text-base truncate">{currentTrack.title}</h3>
@@ -482,7 +554,7 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
 
             <button
               onClick={() => setShowOptionsModal(false)}
-              className="w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-semibold text-white transition-colors"
+              className="w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-semibold text-white transition-colors cursor-pointer"
             >
               Done
             </button>

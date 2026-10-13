@@ -52,17 +52,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#14121b] text-white flex flex-col justify-between overflow-x-hidden relative selection:bg-red-500">
-      {/* Top Capsule Navigation Bar matching Screenshots 2, 3, 4, 5 */}
+      {/* Top Capsule Navigation Bar matching Screenshots */}
       <TvTopNavigationBar
         activeTab={activeTab}
+        isNowPlayingOpen={isNowPlayingViewOpen}
         onSelectTab={(tab) => {
           setActiveTab(tab);
           setIsNowPlayingViewOpen(false);
           setFullPlayerOpen(false);
         }}
-        onOpenNowPlaying={() => {
-          setIsNowPlayingViewOpen(true);
-          setFullPlayerOpen(true);
+        onToggleNowPlaying={() => {
+          const nextState = !isNowPlayingViewOpen;
+          setIsNowPlayingViewOpen(nextState);
+          setFullPlayerOpen(nextState);
         }}
       />
 

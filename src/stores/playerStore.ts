@@ -4,6 +4,32 @@ import { repository } from '../services/repository';
 import { addToHistory, saveSong, removeSong, isSongSaved } from '../services/db';
 import { storage } from '../services/storage';
 import { ytController } from '../services/youtubePlayer';
+import { parseLrc } from '../api/lyrics';
+
+const INITIAL_PRAY_LRC = `[00:09.44] この街から見る夜は深く
+[00:13.68] 月は陰り 風が鳴いている
+[00:17.44] 会えない時間が 心を震わし
+[00:21.68] 蓋した想いは 飽きれるほど
+[00:26.34] 癒えない春も 凍てつく朝も
+[00:30.34] 永遠なんてない情景
+[00:34.99] 忘れぬ恋も 消えぬ痛みも
+[00:38.79] 等しく愛おしいと
+[00:43.85] どれほどの言葉を重ねても
+[00:49.03] 伝えきれない想いがある
+[00:53.30] 祈るように 祈るように
+[00:57.65] ただ君を想う
+[01:02.16] 巡り巡る季節の中で
+[01:06.65] 変わらないものがあるなら
+[01:11.00] それはきっと それはきっと
+[01:15.35] 君と過ごした記憶
+[01:21.84] 夢の続きを紡ぐように
+[01:26.34] 頼りない足取りで進む
+[01:30.70] 遠ざかる背中を見つめては
+[01:35.03] 何度も名前を呼んだ
+[01:39.40] この声が届くなら
+[01:43.88] 世界が白く染まる前に
+[01:48.33] 祈るように 祈るように
+[01:52.70] ただ君を想う`;
 
 export interface Track {
   id: string;
@@ -170,6 +196,7 @@ interface PlayerState {
 
   // Actions
   setCurrentTrack: (track: Track) => Promise<void>;
+  fetchLyricsForCurrentTrack: (track?: Track) => Promise<void>;
   fetchCanvasForCurrentTrack: (track?: Track) => Promise<void>;
   setCanvasSettings: (settings: Partial<{
     liveCanvasEnabled: boolean;
@@ -261,7 +288,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   originalQueue: SCREENSHOT_TRACKS,
   isFullPlayerOpen: false,
   isLyricsOpen: false,
-  lyrics: null,
+  lyrics: {
+    lines: parseLrc(INITIAL_PRAY_LRC),
+    plainText: INITIAL_PRAY_LRC,
+    source: 'BitChord Synced Lyrics',
+    isSynced: true,
+  },
   isFavorite: false,
   streamError: null,
 
@@ -329,7 +361,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   setCurrentTrack: async (track: Track) => {
-    set({ currentTrack: track, isBuffering: true, streamError: null, lyrics: null, currentCanvas: null });
+    set({ currentTrack: track, isBuffering: true, streamError: null, currentCanvas: null });
     updateMediaSession(track);
 
     addToHistory(trackToSong(track)).catch(() => {});
@@ -338,13 +370,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // 1. Play real audio via YouTube Player Controller
     ytController.loadAndPlay(track.id);
 
-    // 2. Fetch lyrics asynchronously
-    repository.getLyrics(track.id).then((l) => {
-      if (l) set({ lyrics: l });
-    }).catch(() => {});
+    // 2. Fetch lyrics asynchronously with real title, artist, duration, and videoId
+    get().fetchLyricsForCurrentTrack(track);
 
     // 3. Fetch animated cover / canvas
     get().fetchCanvasForCurrentTrack(track);
+  },
+
+  fetchLyricsForCurrentTrack: async (track?: Track) => {
+    const t = track || get().currentTrack;
+    if (!t) return;
+    try {
+      const l = await repository.getLyrics(t.title, t.artist, t.duration, t.id);
+      if (l && (l.lines.length > 0 || l.plainText)) {
+        set({ lyrics: l });
+      }
+    } catch (err) {
+      console.warn('Lyrics fetch failed:', err);
+    }
   },
 
   fetchCanvasForCurrentTrack: async (track?: Track) => {
@@ -654,3 +697,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     });
   },
 }));
+
+// Automatically fetch lyrics and canvas for the initial track (Eve - Pray)
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    usePlayerStore.getState().fetchLyricsForCurrentTrack();
+    usePlayerStore.getState().fetchCanvasForCurrentTrack();
+  }, 50);
+}
