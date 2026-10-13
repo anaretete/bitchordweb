@@ -28,11 +28,13 @@ BitChord TV Web is a full architectural migration of the native Android Jetpack 
 
 ---
 
-## 🚀 Live Deployment
+## 🚀 Deployment (GitHub Pages & Netlify)
 
-The application is deployed directly on GitHub Pages with subpath routing and offline service worker caching:
+The application supports zero-config deployment to both GitHub Pages (subpath `/bitchordweb/`) and Netlify (root `/`):
 
-🔗 **[https://anaretete.github.io/bitchordweb/](https://anaretete.github.io/bitchordweb/)**
+- **GitHub Pages**: Automatically deployed via GitHub Actions workflow (`deploy.yml`). Routing is managed via dynamic basename detection and SPA redirection (`404.html`).
+  🔗 **[https://anaretete.github.io/bitchordweb/](https://anaretete.github.io/bitchordweb/)**
+- **Netlify**: Configured with `netlify.toml` and `public/_redirects` (`/* /index.html 200`). Detects root hosting automatically with zero setup required.
 
 ---
 

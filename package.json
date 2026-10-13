@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:gh-pages": "VITE_BASE=/bitchordweb/ vite build",
     "preview": "vite preview"
   },
   "dependencies": {

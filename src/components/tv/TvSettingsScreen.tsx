@@ -349,7 +349,11 @@ export function TvSettingsScreen() {
                 Hosting & Target
               </span>
               <span className="text-sm font-semibold text-white/60">
-                GitHub Pages (/bitchordweb/)
+                {typeof window !== 'undefined' && window.location.hostname.includes('netlify')
+                  ? 'Netlify (/)'
+                  : typeof window !== 'undefined' && window.location.pathname.startsWith('/bitchordweb')
+                  ? 'GitHub Pages (/bitchordweb/)'
+                  : 'Web (/)'}
               </span>
             </div>
           </div>

@@ -6,18 +6,18 @@
     var b = document.createElement('pre');
     b.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;color:#f55;padding:20px;z-index:999999;font-size:14px;overflow:auto;';
     b.textContent = 'CRASH:\n' + e.message + '\n\nAt: ' + e.filename + ':' + e.lineno + '\n\nStack:\n' + (e.error ? e.error.stack : 'no stack');
-    document.body.appendChild(b);
+    (document.body || document.documentElement).appendChild(b);
   });
   window.addEventListener('unhandledrejection', function(e) {
     var b = document.createElement('pre');
     b.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;color:#fa0;padding:20px;z-index:999999;font-size:14px;overflow:auto;';
     b.textContent = 'PROMISE REJECTION:\n' + (e.reason && e.reason.stack ? e.reason.stack : e.reason);
-    document.body.appendChild(b);
+    (document.body || document.documentElement).appendChild(b);
   });
     </script>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/bitchordweb/vite.svg" />
-    <link rel="apple-touch-icon" href="/bitchordweb/icons/icon-192x192.png" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%vite.svg" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/icon-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#12101b" />
     <meta name="description" content="BitChord TV - High fidelity YouTube Music client tailored for TV and responsive web" />

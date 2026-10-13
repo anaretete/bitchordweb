@@ -4,9 +4,13 @@ import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 
+// Auto-detect base: GitHub Pages uses '/bitchordweb/', Netlify & root hosts use '/'
+const isGitHubActions = process.env.GITHUB_ACTIONS === 'true' && !process.env.NETLIFY;
+const base = process.env.VITE_BASE || (isGitHubActions ? '/bitchordweb/' : '/');
+
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -22,21 +26,21 @@ export default defineConfig({
         background_color: '#0a0a0f',
         display: 'standalone',
         orientation: 'any',
-        scope: '/bitchordweb/',
-        start_url: '/bitchordweb/',
+        scope: base,
+        start_url: base,
         icons: [
           {
-            src: '/bitchordweb/icons/icon-192x192.png',
+            src: `${base}icons/icon-192x192.png`.replace(/\/\//g, '/'),
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: '/bitchordweb/icons/icon-512x512.png',
+            src: `${base}icons/icon-512x512.png`.replace(/\/\//g, '/'),
             sizes: '512x512',
             type: 'image/png',
           },
           {
-            src: '/bitchordweb/icons/icon-512x512.png',
+            src: `${base}icons/icon-512x512.png`.replace(/\/\//g, '/'),
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable',
