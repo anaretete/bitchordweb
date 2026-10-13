@@ -6,13 +6,13 @@
     var b = document.createElement('pre');
     b.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;color:#f55;padding:20px;z-index:999999;font-size:14px;overflow:auto;';
     b.textContent = 'CRASH:\n' + e.message + '\n\nAt: ' + e.filename + ':' + e.lineno + '\n\nStack:\n' + (e.error ? e.error.stack : 'no stack');
-    document.body.appendChild(b);
+    (document.body || document.documentElement).appendChild(b);
   });
   window.addEventListener('unhandledrejection', function(e) {
     var b = document.createElement('pre');
     b.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;color:#fa0;padding:20px;z-index:999999;font-size:14px;overflow:auto;';
     b.textContent = 'PROMISE REJECTION:\n' + (e.reason && e.reason.stack ? e.reason.stack : e.reason);
-    document.body.appendChild(b);
+    (document.body || document.documentElement).appendChild(b);
   });
     </script>
     <meta charset="UTF-8" />
@@ -35,9 +35,9 @@
         }
       }(window.location))
     </script>
-    <script type="module" crossorigin src="./assets/index-By2mLOHi.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Dlsg1Xex.css">
-  <link rel="manifest" href="./manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="./registerSW.js"></script></head>
+    <script type="module" crossorigin src="/bitchordweb/assets/index-HYDHSSWA.js"></script>
+    <link rel="stylesheet" crossorigin href="/bitchordweb/assets/index-Dlsg1Xex.css">
+  <link rel="manifest" href="/bitchordweb/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/bitchordweb/registerSW.js"></script></head>
   <body class="bg-[#14121b] text-white selection:bg-red-500 selection:text-white min-h-screen overflow-x-hidden overflow-y-auto select-none">
     <div id="root"></div>
   </body>
