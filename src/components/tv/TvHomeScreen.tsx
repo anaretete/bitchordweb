@@ -90,7 +90,7 @@ export function TvHomeScreen() {
   };
 
   return (
-    <div className="pt-24 pb-20 px-6 sm:px-10 md:px-14 max-w-7xl mx-auto space-y-9 select-none">
+    <div className="pt-20 sm:pt-24 pb-8 px-4 sm:px-10 md:px-14 max-w-7xl mx-auto space-y-7 sm:space-y-9 select-none">
       {/* 1. Recents Row matching Screenshot 4 */}
       <section className="space-y-3.5">
         <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight pl-0.5">
@@ -100,7 +100,7 @@ export function TvHomeScreen() {
         <div
           ref={recentsRef}
           onWheel={handleHorizontalWheel}
-          className="flex gap-4.5 overflow-x-auto pb-4 scrollbar-none pt-1 scroll-smooth touch-pan-x"
+          className="flex gap-3.5 sm:gap-4.5 overflow-x-auto pb-4 scrollbar-none pt-1 scroll-smooth touch-pan-x"
         >
           {recents.map(({ track, bgColor }) => {
             const isCurrent = currentTrack?.id === track.id;
@@ -112,7 +112,7 @@ export function TvHomeScreen() {
                   playTrackDirect(track, SCREENSHOT_TRACKS);
                   setFullPlayerOpen(true);
                 }}
-                className="group w-[205px] sm:w-[220px] shrink-0 rounded-[22px] overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] shadow-xl flex flex-col border border-white/5"
+                className="group w-[160px] sm:w-[205px] md:w-[220px] shrink-0 rounded-[18px] sm:rounded-[22px] overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] shadow-xl flex flex-col border border-white/5"
               >
                 {/* Artwork Upper Portion */}
                 <div className="w-full aspect-square relative bg-neutral-900 overflow-hidden">
@@ -155,7 +155,7 @@ export function TvHomeScreen() {
         <div
           ref={albumsRef}
           onWheel={handleHorizontalWheel}
-          className="flex gap-4.5 overflow-x-auto pb-4 scrollbar-none pt-1 scroll-smooth touch-pan-x"
+          className="flex gap-3.5 sm:gap-4.5 overflow-x-auto pb-4 scrollbar-none pt-1 scroll-smooth touch-pan-x"
         >
           {albumsAndSingles.map((alb) => (
             <div
@@ -164,7 +164,7 @@ export function TvHomeScreen() {
                 playTrackDirect(alb.track, SCREENSHOT_TRACKS);
                 setFullPlayerOpen(true);
               }}
-              className="group w-[205px] sm:w-[220px] shrink-0 rounded-[22px] overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] shadow-xl flex flex-col border border-white/5"
+              className="group w-[160px] sm:w-[205px] md:w-[220px] shrink-0 rounded-[18px] sm:rounded-[22px] overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] shadow-xl flex flex-col border border-white/5"
             >
               <div className="w-full aspect-square relative bg-neutral-900 overflow-hidden">
                 <img

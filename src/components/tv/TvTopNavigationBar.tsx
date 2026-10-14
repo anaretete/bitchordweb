@@ -18,7 +18,7 @@ export function TvTopNavigationBar({
   const { isSignedIn, userProfile, setAuthModalOpen } = usePlayerStore();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 px-6 sm:px-10 md:px-14 pt-5 pb-3 flex items-center justify-between pointer-events-none select-none">
+    <header className="fixed top-0 left-0 right-0 z-40 px-4 sm:px-10 md:px-14 pt-3.5 sm:pt-5 pb-3 flex items-center justify-between pointer-events-none select-none">
       {/* Left: BitChord Wave Logo (3 Curved White Waves) */}
       <div className="flex items-center gap-3 pointer-events-auto">
         <button
@@ -39,11 +39,14 @@ export function TvTopNavigationBar({
               />
             </svg>
           </div>
+          <span className="md:hidden text-base font-black tracking-tight text-white/90">
+            BitChord
+          </span>
         </button>
       </div>
 
-      {/* Center: Floating Capsule Navigation Pill Bar matching Screenshot 4 */}
-      <nav className="pointer-events-auto bg-[#262432]/90 backdrop-blur-2xl border border-white/5 rounded-full px-2 py-1.5 flex items-center gap-1 shadow-2xl">
+      {/* Center: Floating Capsule Navigation Pill Bar matching Screenshot 4 (Desktop/TV/Landscape) */}
+      <nav className="pointer-events-auto hidden md:flex bg-[#262432]/90 backdrop-blur-2xl border border-white/5 rounded-full px-2 py-1.5 items-center gap-1 shadow-2xl">
         {/* Home */}
         <button
           onClick={() => onSelectTab('home')}
@@ -121,11 +124,19 @@ export function TvTopNavigationBar({
         </button>
       </nav>
 
-      {/* Right: User Avatar matching Screenshot 4 */}
-      <div className="flex items-center gap-3 pointer-events-auto">
+      {/* Right: User Avatar & Mobile Now Playing button */}
+      <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+        <button
+          onClick={onToggleNowPlaying}
+          className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/90 active:scale-95 transition-all cursor-pointer"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+          <span>Playing</span>
+        </button>
+
         <button
           onClick={() => setAuthModalOpen(true)}
-          className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white transition-all cursor-pointer shadow-lg active:scale-95 bg-[#252332] flex items-center justify-center"
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white transition-all cursor-pointer shadow-lg active:scale-95 bg-[#252332] flex items-center justify-center"
           title={isSignedIn ? userProfile?.name || 'Imo-Kenpi' : 'Google & YouTube Music Sign-In'}
         >
           {userProfile?.avatarUrl ? (

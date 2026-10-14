@@ -5,7 +5,9 @@ import {
   Film,
   Sliders,
   Check,
-  Key
+  Key,
+  Sparkles,
+  Palette
 } from 'lucide-react';
 import { usePlayerStore } from '../../stores/playerStore';
 import { DEFAULT_SP_DC } from '../../services/canvas';
@@ -15,6 +17,12 @@ export function TvSettingsScreen() {
     isSignedIn,
     userProfile,
     setAuthModalOpen,
+    tvTheme,
+    setTvTheme,
+    ambientLightingEnabled,
+    setAmbientEnabled,
+    ambientIntensity,
+    setAmbientIntensity,
     automix,
     setAutomix,
     crossfadeSeconds,
@@ -57,7 +65,7 @@ export function TvSettingsScreen() {
   };
 
   return (
-    <div className="pt-26 pb-20 px-6 sm:px-12 md:px-16 max-w-6xl mx-auto flex flex-col md:flex-row gap-12 md:gap-16 items-start select-none">
+    <div className="pt-20 sm:pt-24 pb-12 px-4 sm:px-10 md:px-16 max-w-6xl mx-auto flex flex-col md:flex-row gap-8 md:gap-16 items-start select-none">
       {/* Left Column matching Screenshot 2 */}
       <div className="w-full md:w-80 flex flex-col items-center text-center shrink-0 md:sticky md:top-28">
         {/* Large Salmon-Red Squircle with 3-wave BitChord Logo */}
@@ -208,6 +216,81 @@ export function TvSettingsScreen() {
               </span>
               <span className="text-sm font-semibold text-white/80">
                 {audioQuality === 'lossless' ? 'Lossless (Hi-Res)' : audioQuality === 'high' ? 'High 256kbps' : 'Standard 160kbps'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section: Ambient Look & Themes */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-white/55 pl-1 tracking-wide flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Ambient Look & Themes</span>
+          </h3>
+          <div className="bg-[#24212e] rounded-2xl divide-y divide-white/5 border border-white/5 shadow-md overflow-hidden">
+            {/* Dynamic Ambient Glow Toggle */}
+            <div
+              onClick={() => setAmbientEnabled(!ambientLightingEnabled)}
+              className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.03] transition-colors"
+            >
+              <div>
+                <span className="text-sm md:text-base font-medium text-white block">
+                  Dynamic Ambient Glow
+                </span>
+                <span className="text-xs text-white/50">
+                  Luminous background aura extracted from album artwork
+                </span>
+              </div>
+              <span className={`text-sm font-semibold ${ambientLightingEnabled ? 'text-red-400' : 'text-white/60'}`}>
+                {ambientLightingEnabled ? 'Enabled' : 'Disabled'}
+              </span>
+            </div>
+
+            {/* Ambient Intensity Selector */}
+            <div
+              onClick={() => {
+                const intensities: ('vibrant' | 'subtle' | 'off')[] = ['vibrant', 'subtle', 'off'];
+                const next = intensities[(intensities.indexOf(ambientIntensity) + 1) % intensities.length];
+                setAmbientIntensity(next);
+              }}
+              className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.03] transition-colors"
+            >
+              <div>
+                <span className="text-sm md:text-base font-medium text-white block">
+                  Ambient Intensity
+                </span>
+                <span className="text-xs text-white/50">
+                  Aura brightness and backdrop saturation
+                </span>
+              </div>
+              <span className="text-sm font-semibold text-white/80 capitalize">
+                {ambientIntensity}
+              </span>
+            </div>
+
+            {/* Active Visual Theme */}
+            <div
+              onClick={() => {
+                const themes = ['dynamic', 'midnight', 'oled', 'graphite', 'ember'];
+                const next = themes[(themes.indexOf(tvTheme) + 1) % themes.length];
+                setTvTheme(next);
+              }}
+              className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/[0.03] transition-colors"
+            >
+              <div>
+                <span className="text-sm md:text-base font-medium text-white block">
+                  Visual Theme
+                </span>
+                <span className="text-xs text-white/50">
+                  {tvTheme === 'dynamic' && 'Dynamic Artwork (Adapts to music)'}
+                  {tvTheme === 'midnight' && 'Midnight Indigo (Deep sapphire)'}
+                  {tvTheme === 'oled' && 'OLED Pure Black (Zero luminescence)'}
+                  {tvTheme === 'graphite' && 'Graphite Dark (Neutral studio)'}
+                  {tvTheme === 'ember' && 'Ember Red (BitChord signature)'}
+                </span>
+              </div>
+              <span className="text-sm font-semibold text-white/80 capitalize">
+                {tvTheme}
               </span>
             </div>
           </div>

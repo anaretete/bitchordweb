@@ -5,6 +5,7 @@ import { addToHistory, saveSong, removeSong, isSongSaved } from '../services/db'
 import { storage } from '../services/storage';
 import { ytController } from '../services/youtubePlayer';
 import { parseLrc } from '../api/lyrics';
+import { getAmbientPaletteForTrack, type AmbientPalette } from '../services/ambientColor';
 
 const INITIAL_PRAY_LRC = `[00:09.44] この街から見る夜は深く
 [00:13.68] 月は陰り 風が鳴いている
@@ -192,9 +193,15 @@ interface PlayerState {
   appleCanvasEnabled: boolean;
   tidalCanvasEnabled: boolean;
   viviCanvasEnabled: boolean;
-  currentCanvas: CanvasArtwork | null;
+  // Ambient Lighting State
+  ambientLightingEnabled: boolean;
+  ambientIntensity: 'vibrant' | 'subtle' | 'off';
+  ambientPalette: AmbientPalette;
 
   // Actions
+  setAmbientEnabled: (enabled: boolean) => void;
+  setAmbientIntensity: (intensity: 'vibrant' | 'subtle' | 'off') => void;
+  refreshAmbientColors: (track?: Track) => Promise<void>;
   setCurrentTrack: (track: Track) => Promise<void>;
   fetchLyricsForCurrentTrack: (track?: Track) => Promise<void>;
   fetchCanvasForCurrentTrack: (track?: Track) => Promise<void>;
@@ -323,6 +330,44 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   viviCanvasEnabled: true,
   currentCanvas: null,
 
+  // Ambient Lighting State
+  ambientLightingEnabled: typeof window !== 'undefined' ? localStorage.getItem('bitchord_ambient_enabled') !== 'false' : true,
+  ambientIntensity: ((typeof window !== 'undefined' && localStorage.getItem('bitchord_ambient_intensity')) as any) || 'vibrant',
+  ambientPalette: {
+    primary: '#dc2626',
+    secondary: '#7f1d1d',
+    accent: '#f87171',
+    backgroundGlow: 'rgba(220, 38, 38, 0.55)',
+    glowShadow: '0 25px 70px -10px rgba(220, 38, 38, 0.55), 0 10px 30px -5px rgba(0, 0, 0, 0.8)',
+  },
+
+  setAmbientEnabled: (enabled: boolean) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bitchord_ambient_enabled', enabled ? 'true' : 'false');
+    }
+    set({ ambientLightingEnabled: enabled });
+  },
+
+  setAmbientIntensity: (intensity) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bitchord_ambient_intensity', intensity);
+    }
+    set({ ambientIntensity: intensity });
+  },
+
+  refreshAmbientColors: async (track?: Track) => {
+    const t = track || get().currentTrack;
+    if (!t) return;
+    try {
+      const palette = await getAmbientPaletteForTrack(t.id, t.thumbnail, t.title);
+      if (get().currentTrack.id === t.id) {
+        set({ ambientPalette: palette });
+      }
+    } catch (e) {
+      console.warn('Failed to extract ambient palette:', e);
+    }
+  },
+
   setSetupCompleted: (completed: boolean) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('bitchord_setup_completed', completed ? 'true' : 'false');
@@ -340,6 +385,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setTvTheme: (themeId: string) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('bitchord_tv_theme', themeId);
+      document.documentElement.setAttribute('data-theme', themeId);
     }
     set({ tvTheme: themeId });
   },
@@ -375,6 +421,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     // 3. Fetch animated cover / canvas
     get().fetchCanvasForCurrentTrack(track);
+
+    // 4. Update dynamic ambient color palette
+    get().refreshAmbientColors(track);
   },
 
   fetchLyricsForCurrentTrack: async (track?: Track) => {

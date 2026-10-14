@@ -13,7 +13,10 @@ import {
   Share2,
   Film,
   Info,
-  ArrowLeft
+  ArrowLeft,
+  SkipBack,
+  SkipForward,
+  ChevronDown,
 } from 'lucide-react';
 import { usePlayerStore } from '../../stores/playerStore';
 
@@ -36,6 +39,8 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
     duration,
     togglePlay,
     setCurrentTime,
+    previousTrack,
+    nextTrack,
     isFavorite,
     toggleFavorite,
     lyrics,
@@ -48,6 +53,9 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
     playTrackDirect,
     currentCanvas,
     liveCanvasEnabled,
+    ambientPalette,
+    ambientLightingEnabled,
+    ambientIntensity,
     fetchCanvasForCurrentTrack,
     fetchLyricsForCurrentTrack,
   } = usePlayerStore();
@@ -147,6 +155,35 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
     window.addEventListener('mouseup', onMouseUp);
   };
 
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    isDraggingRef.current = true;
+    const touch = e.touches[0];
+    if (touch && scrubberRef.current) {
+      const rect = scrubberRef.current.getBoundingClientRect();
+      const clickX = touch.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, clickX / rect.width));
+      setCurrentTime(pct * duration);
+    }
+
+    const onTouchMove = (moveEvent: TouchEvent) => {
+      if (isDraggingRef.current && moveEvent.touches[0] && scrubberRef.current) {
+        const rect = scrubberRef.current.getBoundingClientRect();
+        const clickX = moveEvent.touches[0].clientX - rect.left;
+        const pct = Math.max(0, Math.min(1, clickX / rect.width));
+        setCurrentTime(pct * duration);
+      }
+    };
+
+    const onTouchEnd = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd);
+  };
+
   const handleShare = () => {
     const url = `https://music.youtube.com/watch?v=${currentTrack.id}`;
     navigator.clipboard?.writeText(url);
@@ -156,27 +193,46 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
 
   const hasCanvasVideo = liveCanvasEnabled && currentCanvas?.url && !videoError;
 
+  const isAmbientActive = ambientLightingEnabled && ambientIntensity !== 'off';
+
   return (
     <div className="fixed inset-0 z-50 bg-[#100e17] text-white flex flex-col justify-between overflow-hidden select-none">
-      {/* 1. Ambient Dynamic Artwork Backdrop Blur */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <img
-          src={currentTrack.thumbnail}
-          alt=""
-          className="w-full h-full object-cover scale-150 blur-3xl opacity-30 transition-all duration-1000"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#100e17] via-black/55 to-[#100e17]/85" />
-      </div>
+      {/* 1. Ambient Dynamic Artwork Backdrop Blur & Radial Atmosphere matching Screenshots */}
+      {isAmbientActive && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden transition-opacity duration-1000">
+          {/* Blurred Artwork Layer */}
+          <img
+            src={currentTrack.thumbnail}
+            alt=""
+            className={`w-full h-full object-cover scale-150 blur-3xl saturate-200 transition-all duration-1000 ${
+              ambientIntensity === 'vibrant' ? 'opacity-65' : 'opacity-35'
+            }`}
+          />
+          {/* Multi-point glowing radial color meshes matching Screenshots 1 & 6 */}
+          <div
+            className="absolute inset-0 transition-all duration-1000 mix-blend-screen"
+            style={{
+              background: `
+                radial-gradient(circle at 50% 40%, ${ambientPalette.backgroundGlow} 0%, transparent 62%),
+                radial-gradient(ellipse at 85% 25%, ${ambientPalette.secondary}66 0%, transparent 52%),
+                radial-gradient(ellipse at 15% 70%, ${ambientPalette.primary}55 0%, transparent 52%)
+              `,
+            }}
+          />
+          {/* Gentle vignette to maintain perfect contrast and readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#100e17]/95 via-[#100e17]/35 to-[#100e17]/75" />
+        </div>
+      )}
 
       {/* 2. Top Bar (Close button and canvas badge) */}
-      <div className="relative z-20 px-8 sm:px-14 pt-6 flex items-center justify-between">
+      <div className="relative z-20 px-5 sm:px-10 md:px-14 pt-4 sm:pt-6 flex items-center justify-between">
         <button
           onClick={isLyricsMode ? () => setIsLyricsMode(false) : onBack}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition-all cursor-pointer text-white/80 hover:text-white shadow-lg backdrop-blur-md border border-white/5"
           aria-label="Back"
           title={isLyricsMode ? 'Return to Cover Art' : 'Back (Esc)'}
         >
-          {isLyricsMode ? <ArrowLeft className="w-5 h-5" /> : <X className="w-5 h-5" />}
+          {isLyricsMode ? <ArrowLeft className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
         </button>
 
         {hasCanvasVideo && (
@@ -288,7 +344,12 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
         /* Centered Album Artwork matching Screenshot 1 */
         <div className="relative z-10 flex-1 flex items-center justify-center px-6 my-auto">
           <div
-            className="w-68 h-68 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-3xl overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.85)] border border-white/10 bg-black/60 cursor-pointer group relative"
+            className="w-[74vw] max-w-[300px] h-[74vw] max-h-[300px] sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-3xl overflow-hidden border border-white/10 bg-black/60 cursor-pointer group relative transition-all duration-700"
+            style={{
+              boxShadow: isAmbientActive
+                ? ambientPalette.glowShadow
+                : '0 24px 60px rgba(0,0,0,0.85)',
+            }}
             onClick={togglePlay}
           >
             {hasCanvasVideo ? (
@@ -319,10 +380,10 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
         </div>
       )}
 
-      {/* 4. Bottom Controls matching Screenshot 1 */}
-      <div className="relative z-20 px-8 sm:px-14 md:px-20 pb-8 space-y-3.5">
-        {/* Track Title/Artist on Left, 4 Circular Frosted Buttons on Right */}
-        <div className="flex items-end justify-between gap-6">
+      {/* 4. Bottom Controls matching Screenshot 1 (Desktop/Landscape) & Mobile Portrait */}
+      <div className="relative z-20 px-5 sm:px-12 md:px-20 pb-6 sm:pb-8 space-y-4">
+        {/* DESKTOP / TV / LANDSCAPE ROW: Track Title/Artist on Left, 4 Circular Frosted Buttons on Right */}
+        <div className="hidden md:flex items-end justify-between gap-6">
           {/* Left: Title & Artist */}
           <div className="space-y-1 min-w-0 max-w-xl">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight truncate drop-shadow-md">
@@ -385,31 +446,127 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
           </div>
         </div>
 
-        {/* Full-Width Progress Scrubber Bar matching Screenshot 1 */}
+        {/* MOBILE PORTRAIT STACK: Title & Artist */}
+        <div className="md:hidden space-y-1 text-left">
+          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate drop-shadow-md">
+            {currentTrack.title}
+          </h1>
+          <p className="text-sm font-semibold text-white/65 truncate">
+            {currentTrack.artist} — {currentTrack.album}
+          </p>
+        </div>
+
+        {/* Full-Width Progress Scrubber Bar matching Screenshot 1 (with touch seeking) */}
         <div className="space-y-1.5 pt-1">
           <div
             ref={scrubberRef}
             onMouseDown={handleMouseDown}
-            className="group relative w-full h-4 flex items-center cursor-pointer"
+            onTouchStart={handleTouchStart}
+            className="group relative w-full h-5 flex items-center cursor-pointer touch-none"
           >
             {/* Background Rail */}
-            <div className="w-full h-1 bg-white/20 group-hover:h-1.5 rounded-full overflow-hidden transition-all">
+            <div className="w-full h-1.5 group-hover:h-2 rounded-full overflow-hidden transition-all bg-white/20">
               <div
-                className="h-full bg-white transition-all duration-75"
-                style={{ width: `${progressPercent}%` }}
+                className="h-full transition-all duration-75"
+                style={{
+                  width: `${progressPercent}%`,
+                  backgroundColor: isAmbientActive ? ambientPalette.accent : '#ffffff',
+                }}
               />
             </div>
 
             {/* Circular Scrubber Knob matching Screenshot 1 */}
             <div
-              className="absolute w-3.5 h-3.5 bg-white rounded-full shadow-md pointer-events-none -translate-x-1/2 group-hover:scale-125 transition-transform"
+              className="absolute w-4 h-4 bg-white rounded-full shadow-lg pointer-events-none -translate-x-1/2 group-hover:scale-125 transition-transform"
               style={{ left: `${progressPercent}%` }}
             />
           </div>
 
-          {/* Time Display underneath progress bar on left matching Screenshot 1 */}
+          {/* Time Display underneath progress bar */}
           <div className="flex items-center justify-between text-xs font-semibold text-white/55 px-0.5">
             <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+        </div>
+
+        {/* MOBILE PORTRAIT PLAYBACK & ACTION ROW */}
+        <div className="md:hidden pt-1 flex items-center justify-between">
+          {/* Action Row */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleFavorite}
+              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 ${
+                isFavorite
+                  ? 'bg-red-600/30 text-red-400 border-red-500/50'
+                  : 'bg-[#252230]/85 border-white/10 text-white/80'
+              }`}
+              title={isFavorite ? 'Remove from Liked' : 'Like'}
+            >
+              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-400' : ''}`} />
+            </button>
+
+            <button
+              onClick={() => setIsLyricsMode(!isLyricsMode)}
+              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 ${
+                isLyricsMode
+                  ? 'bg-white/30 text-white border-white/50'
+                  : 'bg-[#252230]/85 border-white/10 text-white/80'
+              }`}
+              title="Synchronized Lyrics"
+            >
+              <MessageSquareQuote className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setShowQueue(!showQueue)}
+              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 ${
+                showQueue
+                  ? 'bg-white/30 text-white border-white/50'
+                  : 'bg-[#252230]/85 border-white/10 text-white/80'
+              }`}
+              title="Up Next Queue"
+            >
+              <ListMusic className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => setShowOptionsModal(true)}
+              className="w-10 h-10 rounded-full bg-[#252230]/85 border border-white/10 flex items-center justify-center text-white/80 transition-all cursor-pointer shadow-md active:scale-95"
+              title="More Options"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Quick Playback Cluster (Prev, Play/Pause, Next) */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={previousTrack}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white active:scale-95 transition-all cursor-pointer"
+              title="Previous Track"
+            >
+              <SkipBack className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={togglePlay}
+              className="w-13 h-13 rounded-full bg-white text-black flex items-center justify-center hover:bg-neutral-200 active:scale-95 transition-all cursor-pointer shadow-xl"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5 fill-black" />
+              ) : (
+                <Play className="w-5 h-5 fill-black ml-0.5" />
+              )}
+            </button>
+
+            <button
+              onClick={nextTrack}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white active:scale-95 transition-all cursor-pointer"
+              title="Next Track"
+            >
+              <SkipForward className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>

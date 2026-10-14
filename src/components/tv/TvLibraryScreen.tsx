@@ -34,9 +34,9 @@ export function TvLibraryScreen() {
   ];
 
   return (
-    <div className="pt-24 pb-20 px-6 sm:px-10 md:px-14 flex flex-col md:flex-row gap-10 max-w-7xl mx-auto select-none">
+    <div className="pt-20 sm:pt-24 pb-12 px-4 sm:px-10 md:px-14 flex flex-col md:flex-row gap-6 md:gap-10 max-w-7xl mx-auto select-none">
       {/* Left Sub-Navigation Menu matching Screenshot 3 */}
-      <div className="w-full md:w-56 shrink-0 flex md:flex-col gap-1.5 py-2 overflow-x-auto md:overflow-visible scrollbar-none">
+      <div className="w-full md:w-56 shrink-0 flex md:flex-col gap-1.5 py-1 overflow-x-auto md:overflow-visible scrollbar-none touch-pan-x">
         {categories.map((c) => {
           const isActive = activeCategory === c;
           return (

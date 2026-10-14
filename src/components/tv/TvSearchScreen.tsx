@@ -55,7 +55,7 @@ export function TvSearchScreen() {
   };
 
   return (
-    <div className="pt-26 pb-16 px-8 md:px-14 max-w-6xl mx-auto space-y-6">
+    <div className="pt-20 sm:pt-24 pb-12 px-4 sm:px-8 md:px-14 max-w-6xl mx-auto space-y-6 select-none">
       {/* Search Input Bar */}
       <div className="relative">
         <div className="relative flex items-center">

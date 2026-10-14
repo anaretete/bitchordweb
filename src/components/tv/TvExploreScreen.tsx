@@ -104,9 +104,9 @@ export function TvExploreScreen() {
   ];
 
   return (
-    <div className="pt-26 pb-16 px-8 md:px-14 max-w-7xl mx-auto select-none">
-      {/* 4-column responsive grid matching Screenshot 5 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4.5">
+    <div className="pt-20 sm:pt-24 pb-12 px-4 sm:px-8 md:px-14 max-w-7xl mx-auto select-none">
+      {/* 2-column on mobile, 4-column on desktop matching Screenshot 5 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-4.5">
         {tiles.map((tile) => {
           const isContextMenuOpen = activeContextTile === tile.title;
 
