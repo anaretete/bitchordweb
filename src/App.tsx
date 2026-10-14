@@ -7,8 +7,6 @@ import { TvLibraryScreen } from './components/tv/TvLibraryScreen';
 import { TvSettingsScreen } from './components/tv/TvSettingsScreen';
 import { TvSearchScreen } from './components/tv/TvSearchScreen';
 import { TvNowPlayingScreen } from './components/tv/TvNowPlayingScreen';
-import { MiniPlayer } from './components/tv/MiniPlayer';
-import { MobileBottomNav } from './components/tv/MobileBottomNav';
 import { YtMusicLoginModal } from './components/auth/YtMusicLoginModal';
 
 export default function App() {
@@ -100,28 +98,13 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full pb-36 md:pb-24">
+      <main className="flex-1 w-full pb-16">
         {activeTab === 'home' && <TvHomeScreen />}
         {activeTab === 'explore' && <TvExploreScreen />}
         {activeTab === 'library' && <TvLibraryScreen />}
         {activeTab === 'settings' && <TvSettingsScreen />}
         {activeTab === 'search' && <TvSearchScreen />}
       </main>
-
-      {/* Persistent Floating Mini-Player */}
-      {!isNowPlayingViewOpen && currentTrack && <MiniPlayer />}
-
-      {/* Dedicated Mobile Bottom Tab Dock (< 768px) */}
-      {!isNowPlayingViewOpen && (
-        <MobileBottomNav
-          activeTab={activeTab}
-          onSelectTab={(tab) => {
-            setActiveTab(tab);
-            setIsNowPlayingViewOpen(false);
-            setFullPlayerOpen(false);
-          }}
-        />
-      )}
 
       {/* Fullscreen Now Playing Screen matching Screenshot 1 */}
       {isNowPlayingViewOpen && (

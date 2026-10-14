@@ -121,11 +121,6 @@ export function TvHomeScreen() {
                     alt={track.title}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
-                  {isCurrent && isPlaying && (
-                    <div className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-red-600/90 text-white text-[10px] font-bold uppercase tracking-wider shadow">
-                      Playing
-                    </div>
-                  )}
                 </div>
 
                 {/* Tinted Lower Caption matching Screenshot 4 (Centered Text) */}

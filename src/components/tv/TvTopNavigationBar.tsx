@@ -18,18 +18,18 @@ export function TvTopNavigationBar({
   const { isSignedIn, userProfile, setAuthModalOpen } = usePlayerStore();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 px-4 sm:px-10 md:px-14 pt-3.5 sm:pt-5 pb-3 flex items-center justify-between pointer-events-none select-none">
+    <header className="fixed top-0 left-0 right-0 z-40 px-4 sm:px-8 md:px-14 pt-3 sm:pt-5 pb-3 flex items-center justify-between pointer-events-none select-none">
       {/* Left: BitChord Wave Logo (3 Curved White Waves) */}
-      <div className="flex items-center gap-3 pointer-events-auto">
+      <div className="flex items-center shrink-0 pointer-events-auto">
         <button
           onClick={() => {
             onSelectTab('home');
           }}
-          className="flex items-center gap-2 group cursor-pointer focus:outline-none"
+          className="flex items-center group cursor-pointer focus:outline-none"
           title="BitChord TV"
         >
-          <div className="w-9 h-9 flex items-center justify-center">
-            <svg className="w-8 h-8 text-white transition-transform group-hover:scale-105" viewBox="0 0 24 24">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center">
+            <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white transition-transform group-hover:scale-105" viewBox="0 0 24 24">
               <path
                 d="M4 6.5c5-2.2 11-2.2 16 0M4 11.5c5-2.2 11-2.2 16 0M4 16.5c5-2.2 11-2.2 16 0"
                 stroke="currentColor"
@@ -39,14 +39,11 @@ export function TvTopNavigationBar({
               />
             </svg>
           </div>
-          <span className="md:hidden text-base font-black tracking-tight text-white/90">
-            BitChord
-          </span>
         </button>
       </div>
 
-      {/* Center: Floating Capsule Navigation Pill Bar matching Screenshot 4 (Desktop/TV/Landscape) */}
-      <nav className="pointer-events-auto hidden md:flex bg-[#262432]/90 backdrop-blur-2xl border border-white/5 rounded-full px-2 py-1.5 items-center gap-1 shadow-2xl">
+      {/* Center: Floating Capsule Navigation Pill Bar matching Screenshot 4 */}
+      <nav className="pointer-events-auto mx-2 bg-[#262432]/90 backdrop-blur-2xl border border-white/5 rounded-full p-1 sm:px-2 sm:py-1.5 flex items-center gap-0.5 sm:gap-1 shadow-2xl overflow-x-auto scrollbar-none max-w-[calc(100vw-110px)] sm:max-w-none">
         {/* Home */}
         <button
           onClick={() => onSelectTab('home')}
@@ -112,7 +109,7 @@ export function TvTopNavigationBar({
         {/* Settings Gear Icon in Circle */}
         <button
           onClick={() => onSelectTab('settings')}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer ${
+          className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 ${
             !isNowPlayingOpen && activeTab === 'settings'
               ? 'bg-[#4a475a] text-white shadow-md'
               : 'text-white/70 hover:text-white'
@@ -120,23 +117,15 @@ export function TvTopNavigationBar({
           aria-label="Settings"
           title="Settings"
         >
-          <Settings className="w-4 h-4" />
+          <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </button>
       </nav>
 
-      {/* Right: User Avatar & Mobile Now Playing button */}
-      <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto">
-        <button
-          onClick={onToggleNowPlaying}
-          className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/10 text-xs font-semibold text-white/90 active:scale-95 transition-all cursor-pointer"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-          <span>Playing</span>
-        </button>
-
+      {/* Right: User Avatar matching Screenshot 4 */}
+      <div className="flex items-center shrink-0 pointer-events-auto">
         <button
           onClick={() => setAuthModalOpen(true)}
-          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white transition-all cursor-pointer shadow-lg active:scale-95 bg-[#252332] flex items-center justify-center"
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-white transition-all cursor-pointer shadow-lg active:scale-95 bg-[#252332] flex items-center justify-center"
           title={isSignedIn ? userProfile?.name || 'Imo-Kenpi' : 'Google & YouTube Music Sign-In'}
         >
           {userProfile?.avatarUrl ? (

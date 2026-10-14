@@ -224,23 +224,17 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
         </div>
       )}
 
-      {/* 2. Top Bar (Close button and canvas badge) */}
+      {/* 2. Top Bar (Discreet dismiss button without AI badges) */}
       <div className="relative z-20 px-5 sm:px-10 md:px-14 pt-4 sm:pt-6 flex items-center justify-between">
         <button
           onClick={isLyricsMode ? () => setIsLyricsMode(false) : onBack}
-          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition-all cursor-pointer text-white/80 hover:text-white shadow-lg backdrop-blur-md border border-white/5"
+          className="w-10 h-10 rounded-full text-white/50 hover:text-white hover:bg-white/10 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
           aria-label="Back"
           title={isLyricsMode ? 'Return to Cover Art' : 'Back (Esc)'}
         >
-          {isLyricsMode ? <ArrowLeft className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          {isLyricsMode ? <ArrowLeft className="w-5 h-5" /> : <ChevronDown className="w-6 h-6" />}
         </button>
-
-        {hasCanvasVideo && (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-[11px] font-semibold text-white/80">
-            <Film className="w-3.5 h-3.5 text-red-400" />
-            <span className="capitalize">{currentCanvas.source} Canvas</span>
-          </div>
-        )}
+        <div />
       </div>
 
       {/* 3. Center Section */}
@@ -341,10 +335,10 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
           </div>
         </div>
       ) : (
-        /* Centered Album Artwork matching Screenshot 1 */
+        /* Centered Album Artwork matching Screenshots 1 & 6 */
         <div className="relative z-10 flex-1 flex items-center justify-center px-6 my-auto">
           <div
-            className="w-[74vw] max-w-[300px] h-[74vw] max-h-[300px] sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-3xl overflow-hidden border border-white/10 bg-black/60 cursor-pointer group relative transition-all duration-700"
+            className="w-[74vw] max-w-[320px] h-[74vw] max-h-[320px] sm:w-80 sm:h-80 md:w-96 md:h-96 lg:w-[420px] lg:h-[420px] rounded-[28px] sm:rounded-[32px] overflow-hidden bg-black/60 cursor-pointer group relative transition-all duration-700 select-none"
             style={{
               boxShadow: isAmbientActive
                 ? ambientPalette.glowShadow
@@ -370,8 +364,8 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
               />
             )}
 
-            {/* Subtle Play / Pause Overlay on Hover */}
-            <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+            {/* Subtle Play / Pause Indicator on Hover / Interaction */}
+            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
               <div className="w-16 h-16 rounded-full bg-white/90 text-black flex items-center justify-center shadow-2xl transition-transform group-hover:scale-105">
                 {isPlaying ? <Pause className="w-7 h-7 fill-black" /> : <Play className="w-7 h-7 fill-black ml-1" />}
               </div>
@@ -380,193 +374,100 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
         </div>
       )}
 
-      {/* 4. Bottom Controls matching Screenshot 1 (Desktop/Landscape) & Mobile Portrait */}
-      <div className="relative z-20 px-5 sm:px-12 md:px-20 pb-6 sm:pb-8 space-y-4">
-        {/* DESKTOP / TV / LANDSCAPE ROW: Track Title/Artist on Left, 4 Circular Frosted Buttons on Right */}
-        <div className="hidden md:flex items-end justify-between gap-6">
-          {/* Left: Title & Artist */}
-          <div className="space-y-1 min-w-0 max-w-xl">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight truncate drop-shadow-md">
+      {/* 4. Bottom Controls matching Screenshots 1 & 6 */}
+      <div className="relative z-20 px-5 sm:px-12 md:px-20 pb-6 sm:pb-8 space-y-3.5">
+        {/* ROW: Track Title & Artist on Left, 4 Frosted Circular Action Buttons on Right */}
+        <div className="flex items-end justify-between gap-4">
+          {/* Left: Title & Artist / Album */}
+          <div className="space-y-0.5 min-w-0 max-w-[65%] sm:max-w-xl text-left">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight truncate drop-shadow-md">
               {currentTrack.title}
             </h1>
-            <p className="text-sm sm:text-base font-medium text-white/60 truncate">
-              {currentTrack.artist} — {currentTrack.album}
+            <p className="text-xs sm:text-sm md:text-base font-normal sm:font-medium text-white/60 truncate">
+              {currentTrack.artist} — {currentTrack.album || currentTrack.title}
             </p>
           </div>
 
           {/* Right: 4 Frosted Circular Action Buttons matching Screenshot 1 */}
-          <div className="flex items-center gap-3.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
             {/* Button 1: Like / Heart */}
             <button
               onClick={toggleFavorite}
-              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
                 isFavorite
-                  ? 'bg-red-600/30 text-red-400 border-red-500/50'
-                  : 'bg-[#252230]/85 hover:bg-[#322d40] border-white/5 text-white/80 hover:text-white'
+                  ? 'bg-red-600/30 text-red-400'
+                  : 'bg-white/[0.08] hover:bg-white/[0.15] text-white/80 hover:text-white'
               }`}
               title={isFavorite ? 'Remove from Liked' : 'Like'}
             >
-              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-400' : ''}`} />
+              <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${isFavorite ? 'fill-red-400' : ''}`} />
             </button>
 
             {/* Button 2: Synced Lyrics (Speech Bubble with quotes) */}
             <button
               onClick={() => setIsLyricsMode(!isLyricsMode)}
-              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
                 isLyricsMode
-                  ? 'bg-white/30 text-white border-white/50'
-                  : 'bg-[#252230]/85 hover:bg-[#322d40] border-white/5 text-white/80 hover:text-white'
+                  ? 'bg-white/25 text-white'
+                  : 'bg-white/[0.08] hover:bg-white/[0.15] text-white/80 hover:text-white'
               }`}
               title="Synchronized Lyrics"
             >
-              <MessageSquareQuote className="w-5 h-5" />
+              <MessageSquareQuote className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             {/* Button 3: Queue / Up Next (List icon) */}
             <button
               onClick={() => setShowQueue(!showQueue)}
-              className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95 ${
                 showQueue
-                  ? 'bg-white/30 text-white border-white/50'
-                  : 'bg-[#252230]/85 hover:bg-[#322d40] border-white/5 text-white/80 hover:text-white'
+                  ? 'bg-white/25 text-white'
+                  : 'bg-white/[0.08] hover:bg-white/[0.15] text-white/80 hover:text-white'
               }`}
               title="Up Next Queue"
             >
-              <ListMusic className="w-5 h-5" />
+              <ListMusic className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             {/* Button 4: More Options (•••) */}
             <button
               onClick={() => setShowOptionsModal(true)}
-              className="w-12 h-12 rounded-full bg-[#252230]/85 hover:bg-[#322d40] border border-white/5 flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/[0.08] hover:bg-white/[0.15] flex items-center justify-center text-white/80 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
               title="More Options"
             >
-              <MoreHorizontal className="w-5 h-5" />
+              <MoreHorizontal className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
 
-        {/* MOBILE PORTRAIT STACK: Title & Artist */}
-        <div className="md:hidden space-y-1 text-left">
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate drop-shadow-md">
-            {currentTrack.title}
-          </h1>
-          <p className="text-sm font-semibold text-white/65 truncate">
-            {currentTrack.artist} — {currentTrack.album}
-          </p>
-        </div>
-
-        {/* Full-Width Progress Scrubber Bar matching Screenshot 1 (with touch seeking) */}
-        <div className="space-y-1.5 pt-1">
+        {/* Full-Width Progress Scrubber Bar matching Screenshots 1 & 6 */}
+        <div className="space-y-1 pt-1">
           <div
             ref={scrubberRef}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            className="group relative w-full h-5 flex items-center cursor-pointer touch-none"
+            className="group relative w-full h-4 flex items-center cursor-pointer touch-none"
           >
             {/* Background Rail */}
-            <div className="w-full h-1.5 group-hover:h-2 rounded-full overflow-hidden transition-all bg-white/20">
+            <div className="w-full h-1 rounded-full overflow-hidden transition-all bg-white/20">
               <div
-                className="h-full transition-all duration-75"
+                className="h-full transition-all duration-75 bg-white"
                 style={{
                   width: `${progressPercent}%`,
-                  backgroundColor: isAmbientActive ? ambientPalette.accent : '#ffffff',
                 }}
               />
             </div>
 
             {/* Circular Scrubber Knob matching Screenshot 1 */}
             <div
-              className="absolute w-4 h-4 bg-white rounded-full shadow-lg pointer-events-none -translate-x-1/2 group-hover:scale-125 transition-transform"
+              className="absolute w-3.5 h-3.5 bg-white rounded-full shadow-md pointer-events-none -translate-x-1/2 group-hover:scale-125 transition-transform"
               style={{ left: `${progressPercent}%` }}
             />
           </div>
 
-          {/* Time Display underneath progress bar */}
-          <div className="flex items-center justify-between text-xs font-semibold text-white/55 px-0.5">
+          {/* Time Display underneath progress bar on left only (matching Screenshot 1) */}
+          <div className="flex items-center justify-start text-xs font-normal text-white/50 px-0.5 tracking-wide">
             <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
-
-        {/* MOBILE PORTRAIT PLAYBACK & ACTION ROW */}
-        <div className="md:hidden pt-1 flex items-center justify-between">
-          {/* Action Row */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleFavorite}
-              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 ${
-                isFavorite
-                  ? 'bg-red-600/30 text-red-400 border-red-500/50'
-                  : 'bg-[#252230]/85 border-white/10 text-white/80'
-              }`}
-              title={isFavorite ? 'Remove from Liked' : 'Like'}
-            >
-              <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-400' : ''}`} />
-            </button>
-
-            <button
-              onClick={() => setIsLyricsMode(!isLyricsMode)}
-              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 ${
-                isLyricsMode
-                  ? 'bg-white/30 text-white border-white/50'
-                  : 'bg-[#252230]/85 border-white/10 text-white/80'
-              }`}
-              title="Synchronized Lyrics"
-            >
-              <MessageSquareQuote className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => setShowQueue(!showQueue)}
-              className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 ${
-                showQueue
-                  ? 'bg-white/30 text-white border-white/50'
-                  : 'bg-[#252230]/85 border-white/10 text-white/80'
-              }`}
-              title="Up Next Queue"
-            >
-              <ListMusic className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => setShowOptionsModal(true)}
-              className="w-10 h-10 rounded-full bg-[#252230]/85 border border-white/10 flex items-center justify-center text-white/80 transition-all cursor-pointer shadow-md active:scale-95"
-              title="More Options"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Quick Playback Cluster (Prev, Play/Pause, Next) */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={previousTrack}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white active:scale-95 transition-all cursor-pointer"
-              title="Previous Track"
-            >
-              <SkipBack className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={togglePlay}
-              className="w-13 h-13 rounded-full bg-white text-black flex items-center justify-center hover:bg-neutral-200 active:scale-95 transition-all cursor-pointer shadow-xl"
-              title={isPlaying ? 'Pause' : 'Play'}
-            >
-              {isPlaying ? (
-                <Pause className="w-5 h-5 fill-black" />
-              ) : (
-                <Play className="w-5 h-5 fill-black ml-0.5" />
-              )}
-            </button>
-
-            <button
-              onClick={nextTrack}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white/70 hover:text-white active:scale-95 transition-all cursor-pointer"
-              title="Next Track"
-            >
-              <SkipForward className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>
