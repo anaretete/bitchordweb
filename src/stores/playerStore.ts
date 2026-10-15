@@ -458,6 +458,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
     try {
       const hit = await canvasService.resolveCanvas(t.title, t.artist, t.album, {
+        trackId: t.id,
         prioritizeSpotify: true,
         enableSpotify: spotifyCanvasEnabled,
         enableTidal: tidalCanvasEnabled,

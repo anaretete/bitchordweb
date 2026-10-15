@@ -19,9 +19,74 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { usePlayerStore } from '../../stores/playerStore';
+import Hls from 'hls.js';
 
 interface TvNowPlayingScreenProps {
   onBack: () => void;
+}
+
+interface CanvasVideoPlayerProps {
+  url: string;
+  onError: () => void;
+  className?: string;
+}
+
+function CanvasVideoPlayer({ url, onError, className = 'w-full h-full object-cover pointer-events-none' }: CanvasVideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !url) return;
+
+    let hls: Hls | null = null;
+    const isM3u8 = url.includes('.m3u8');
+
+    if (isM3u8) {
+      if (Hls.isSupported()) {
+        hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) {
+            console.warn('[HLS] Fatal error on canvas video:', data);
+            onError();
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+        video.play().catch(() => {});
+      } else {
+        onError();
+      }
+    } else {
+      video.src = url;
+      video.play().catch(() => {});
+    }
+
+    return () => {
+      if (hls) {
+        hls.destroy();
+      }
+    };
+  }, [url, onError]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      loop
+      muted
+      playsInline
+      onError={onError}
+      className={className}
+    />
+  );
 }
 
 function formatTime(seconds: number): string {
@@ -245,14 +310,10 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
           <div className="w-full md:w-[38%] flex flex-col items-center md:items-start text-center md:text-left shrink-0">
             <div className="w-56 h-56 sm:w-64 sm:h-64 md:w-72 md:h-72 rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black/60 relative group">
               {hasCanvasVideo ? (
-                <video
-                  src={currentCanvas.url}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
+                <CanvasVideoPlayer
+                  url={currentCanvas.url}
                   onError={() => setVideoError(true)}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover pointer-events-none"
                 />
               ) : (
                 <img
@@ -347,14 +408,10 @@ export function TvNowPlayingScreen({ onBack }: TvNowPlayingScreenProps) {
             onClick={togglePlay}
           >
             {hasCanvasVideo ? (
-              <video
-                src={currentCanvas.url}
-                autoPlay
-                loop
-                muted
-                playsInline
+              <CanvasVideoPlayer
+                url={currentCanvas.url}
                 onError={() => setVideoError(true)}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover pointer-events-none"
               />
             ) : (
               <img

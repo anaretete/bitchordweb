@@ -19,6 +19,8 @@ import { storage } from './storage';
 export class MusicRepository {
   private innertube: InnerTubeClient;
   private piped: PipedClient;
+  private searchCache = new Map<string, SearchResult>();
+  private suggestionCache = new Map<string, SearchSuggestion[]>();
 
   constructor() {
     this.innertube = innertube;
@@ -76,7 +78,7 @@ export class MusicRepository {
   }
 
   /**
-   * Search songs, albums, artists, or playlists
+   * Ultra-fast search with in-memory caching and multi-provider racing
    */
   public async search(
     query: string,
@@ -89,34 +91,120 @@ export class MusicRepository {
       playlists: [],
     };
 
-    if (!query.trim()) return emptyResult;
+    const trimmed = (query || '').trim();
+    if (!trimmed) return emptyResult;
 
-    try {
-      this.syncSettings();
-      const result = await this.innertube.searchParsed(query, filter);
-      if (
-        result.songs.length > 0 ||
-        result.albums.length > 0 ||
-        result.artists.length > 0 ||
-        result.playlists.length > 0
-      ) {
-        return result;
-      }
-    } catch (err) {
-      console.warn('InnerTube search failed, attempting Piped search fallback:', err);
+    const cacheKey = `${trimmed.toLowerCase()}:${filter || 'all'}`;
+    if (this.searchCache.has(cacheKey)) {
+      return this.searchCache.get(cacheKey)!;
     }
 
-    // Fallback to Piped search for songs
+    this.syncSettings();
+    const sapisid = storage.getSapisid();
+
+    // Strategy 1: If authenticated with SAPISID, try InnerTube with short timeout
+    if (sapisid) {
+      try {
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('InnerTube timeout')), 2200)
+        );
+        const result = (await Promise.race([
+          this.innertube.searchParsed(trimmed, filter),
+          timeoutPromise,
+        ])) as SearchResult | null;
+
+        if (result && (result.songs.length > 0 || result.albums.length > 0)) {
+          this.searchCache.set(cacheKey, result);
+          return result;
+        }
+      } catch {
+        // Fallback to fast multi-provider search
+      }
+    }
+
+    // Strategy 2: Fast Parallel Search via Piped & iTunes
     try {
-      const pipedSongs = await this.piped.search(query);
-      return {
+      const searchTasks: Promise<SearchResult>[] = [];
+
+      // Task A: Fast Piped Search (multi-instance fallback)
+      searchTasks.push(
+        (async () => {
+          const pipedSongs = await this.piped.search(trimmed);
+          return {
+            songs: pipedSongs,
+            albums: [],
+            artists: [],
+            playlists: [],
+          };
+        })()
+      );
+
+      // Task B: Fast iTunes Search API (instant global response ~150ms, full CORS)
+      searchTasks.push(
+        (async () => {
+          const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(
+            trimmed
+          )}&entity=song&limit=15`;
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2500);
+          const res = await fetch(itunesUrl, { signal: controller.signal });
+          clearTimeout(timer);
+          if (!res.ok) throw new Error('iTunes failed');
+          const data = await res.json();
+          const songs: Song[] = (data.results || []).map((item: any) => ({
+            videoId: item.previewUrl ? `itunes_${item.trackId}` : `${trimmed}`,
+            title: item.trackName || '',
+            artists: [{ name: item.artistName || 'Unknown Artist' }],
+            album: { name: item.collectionName || 'Single' },
+            thumbnails: [
+              {
+                url: (item.artworkUrl100 || '').replace('100x100bb', '600x600bb'),
+                width: 600,
+                height: 600,
+              },
+            ],
+            duration: Math.round((item.trackTimeMillis || 180000) / 1000),
+          }));
+          return {
+            songs,
+            albums: [],
+            artists: [],
+            playlists: [],
+          };
+        })()
+      );
+
+      // Race or resolve fastest
+      const firstValidResult = await Promise.any(
+        searchTasks.map(async (t) => {
+          const r = await t;
+          if (r.songs.length > 0) return r;
+          throw new Error('Empty');
+        })
+      );
+
+      if (firstValidResult && firstValidResult.songs.length > 0) {
+        this.searchCache.set(cacheKey, firstValidResult);
+        return firstValidResult;
+      }
+    } catch (err) {
+      console.warn('[Search] Fast parallel search failed, attempting piped fallback:', err);
+    }
+
+    // Final fallback
+    try {
+      const pipedSongs = await this.piped.search(trimmed);
+      const res: SearchResult = {
         songs: pipedSongs,
         albums: [],
         artists: [],
         playlists: [],
       };
-    } catch (err) {
-      console.error('Search failed across all providers:', err);
+      if (res.songs.length > 0) {
+        this.searchCache.set(cacheKey, res);
+      }
+      return res;
+    } catch {
       return emptyResult;
     }
   }
@@ -282,15 +370,53 @@ export class MusicRepository {
   }
 
   /**
-   * Get search query autocomplete suggestions
+   * Get search query autocomplete suggestions (instant caching & multi-instance fallback)
    */
-  public async searchSuggestions(query: string): Promise<SearchSuggestion[]> {
-    if (!query.trim()) return [];
-    try {
-      return await this.innertube.getSearchSuggestions(query);
-    } catch {
-      return [];
+  public async getSearchSuggestions(query: string): Promise<SearchSuggestion[]> {
+    const trimmed = (query || '').trim();
+    if (!trimmed) return [];
+
+    const cacheKey = trimmed.toLowerCase();
+    if (this.suggestionCache.has(cacheKey)) {
+      return this.suggestionCache.get(cacheKey)!;
     }
+
+    try {
+      const instances = [
+        'https://api.piped.private.coffee',
+        'https://pipedapi.colins.link',
+        'https://pipedapi.kavin.rocks',
+      ];
+
+      for (const inst of instances) {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 1200);
+          const res = await fetch(`${inst}/suggestions?query=${encodeURIComponent(trimmed)}`, {
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+          if (res.ok) {
+            const list: string[] = await res.json();
+            if (Array.isArray(list) && list.length > 0) {
+              const suggestions = list.slice(0, 8).map((s) => ({ text: s }));
+              this.suggestionCache.set(cacheKey, suggestions);
+              return suggestions;
+            }
+          }
+        } catch {
+          // try next instance
+        }
+      }
+    } catch {
+      // fallback
+    }
+
+    return [];
+  }
+
+  public async searchSuggestions(query: string): Promise<SearchSuggestion[]> {
+    return this.getSearchSuggestions(query);
   }
 
   /**
